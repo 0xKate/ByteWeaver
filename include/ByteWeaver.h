@@ -92,7 +92,6 @@ namespace ByteWeaver {
     // Install a custom logger from the outside
     void SetLogCallback(LogFunction fn);
 
-    // Your internal logging functions
     void debug(const char* fmt, ...);
     void info(const char* fmt, ...);
     void warn(const char* fmt, ...);

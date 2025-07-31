@@ -33,9 +33,9 @@ namespace ByteWeaver
                     nullptr
                 );
 
-                error("[Patch] Failed to set permissions at 0x%016llx (size: %d). Error %lu: %s",
+                error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
                     patchAddress,
-                    (int)patchBytes.size(),
+                    patchBytes.size(),
                     errCode,
                     buf);
 
@@ -65,9 +65,9 @@ namespace ByteWeaver
                     // add more as needed
                 }
 
-                error("[Patch] Exception writing patch at 0x%016llx (Length: %d): 0x%08x (%s)",
+                error("[Patch] Exception writing patch at 0x%016llx (Length: %zu): 0x%08x (%s)",
                     patchAddress,
-                    (int)patchBytes.size(),
+                    patchBytes.size(),
                     code,
                     reason);
 
@@ -78,7 +78,7 @@ namespace ByteWeaver
             VirtualProtect(patchAddress, patchBytes.size(), oldProtection, &_);
 
             if constexpr (ENABLE_PATCH_LOGGING)
-                debug("[Patch] (Apply) [Address: 0x%016llx, Length: %d]", patchAddress, (int)patchBytes.size());
+                debug("[Patch] (Apply) [Address: 0x%016llx, Length: %zu]", patchAddress, patchBytes.size());
 
             this->isPatched = true;
             return true;
@@ -111,9 +111,9 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to change memory protection for restore at 0x%016llx (size: %d). Error %lu: %s",
+            error("[Patch] Failed to change memory protection for restore at 0x%016llx (size: %zu). Error %lu: %s",
                 reinterpret_cast<uintptr_t>(pTarget),
-                static_cast<int>(originalBytes.size()),
+                originalBytes.size(),
                 errCode,
                 buf);
 
@@ -141,9 +141,9 @@ namespace ByteWeaver
             case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: reason = "Array Bounds Exceeded"; break;
             }
 
-            error("[Patch] Exception restoring memory at 0x%016llx (Length: %d): 0x%08X (%s)",
+            error("[Patch] Exception restoring memory at 0x%016llx (Length: %zu): 0x%08X (%s)",
                 reinterpret_cast<uintptr_t>(pTarget),
-                static_cast<int>(originalBytes.size()),
+                originalBytes.size(),
                 code,
                 reason);
 
@@ -153,7 +153,7 @@ namespace ByteWeaver
         VirtualProtect(pTarget, originalBytes.size(), oldProtection, &_);
 
         if constexpr (ENABLE_PATCH_LOGGING)
-            debug("[Patch] (Restore) [Address: 0x%016llx, Length: %d]", pTarget, (int)originalBytes.size());
+            debug("[Patch] (Restore) [Address: 0x%016llx, Length: %zu]", pTarget, originalBytes.size());
 
         this->isPatched = false;
         return true;

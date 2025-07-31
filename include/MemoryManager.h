@@ -15,12 +15,14 @@ namespace ByteWeaver {
 		static uintptr_t GetBaseAddress();
 
 		static void AddPatch(std::string key, std::shared_ptr<Patch> hPatch);
-		static void DelPatch(std::string key);
+		static void AddPatch(std::string key, Patch* hPatch);
+		static void ErasePatch(std::string key);
+		static void RestoreAndErasePatch(std::string key);
 
-		static void AddDetour(std::string key, Detour* hDetour);
 		static void AddDetour(std::string key, std::shared_ptr<Detour> hDetour);
+		static void AddDetour(std::string key, Detour* hDetour);
 		static void EraseDetour(std::string key);
-		static void DelDetour(std::string key);
+		static void RestoreAndEraseDetour(std::string key);
 
 		static void ApplyPatches();
 		static void RestorePatches();
@@ -34,7 +36,7 @@ namespace ByteWeaver {
 		static void ApplyAll();
 		static void RestoreAll();
 
-		static bool IsLocationModified(uintptr_t startAddress, int length, std::vector<std::string>* detectedKeys);
+		static bool IsLocationModified(uintptr_t startAddress, size_t length, std::vector<std::string>* detectedKeys);
 		static bool IsAddressValid(uintptr_t lpAddress);
 		static bool IsMemoryRangeValid(uintptr_t address, size_t length);
 		static bool IsAddressReadable(uintptr_t address);

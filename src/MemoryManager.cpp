@@ -17,12 +17,23 @@ namespace ByteWeaver {
     void MemoryManager::AddPatch(std::string key, std::shared_ptr<Patch> hPatch) {
         auto it = Patches.find(key);
         if (it != Patches.end()) {
-            DelPatch(key);
+            RestoreAndErasePatch(key);
         }
         Patches[key] = hPatch;
     }
 
-    void MemoryManager::DelPatch(std::string key) {
+    void MemoryManager::AddPatch(std::string key, Patch* hPatch) {
+        AddPatch(key, std::shared_ptr<Patch>(hPatch));
+    }
+
+    void MemoryManager::ErasePatch(std::string key) {
+        auto it = Patches.find(key);
+        if (it != Patches.end()) {
+            Patches.erase(it);
+        }
+    }
+
+    void MemoryManager::RestoreAndErasePatch(std::string key) {
         auto it = Patches.find(key);
         if (it != Patches.end()) {
             it->second->Restore();
@@ -30,16 +41,16 @@ namespace ByteWeaver {
         }
     }
 
-    void MemoryManager::AddDetour(std::string key, Detour* hDetour) {
-        AddDetour(key, std::shared_ptr<Detour>(hDetour));
-    }
-
     void MemoryManager::AddDetour(std::string key, std::shared_ptr<Detour> hDetour) {
         auto it = Detours.find(key);
         if (it != Detours.end()) {
-            DelDetour(key);
+            RestoreAndEraseDetour(key);
         }
         Detours[key] = hDetour;
+    }
+
+    void MemoryManager::AddDetour(std::string key, Detour* hDetour) {
+        AddDetour(key, std::shared_ptr<Detour>(hDetour));
     }
 
     void MemoryManager::EraseDetour(std::string key) {
@@ -49,7 +60,7 @@ namespace ByteWeaver {
         }
     }
 
-    void MemoryManager::DelDetour(std::string key) {
+    void MemoryManager::RestoreAndEraseDetour(std::string key) {
         auto it = Detours.find(key);
         if (it != Detours.end()) {
             it->second->Restore();
@@ -125,7 +136,7 @@ namespace ByteWeaver {
         debug("[MemoryManager] Restored all detours and patches.");
     }
 
-    bool MemoryManager::IsLocationModified(uintptr_t startAddress, int length, std::vector<std::string>* detectedKeys) {
+    bool MemoryManager::IsLocationModified(uintptr_t startAddress, size_t length, std::vector<std::string>* detectedKeys) {
         uintptr_t endAddress = startAddress + length;
         for (const auto& patchEntry : MemoryManager::Patches) {
             const std::shared_ptr<Patch> patch = patchEntry.second;

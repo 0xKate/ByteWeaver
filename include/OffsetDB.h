@@ -17,7 +17,6 @@ namespace ByteWeaver {
         void Dump() const;
     };
 
-
     class OffsetDB {
     public:
         static std::vector<Offset> offsets;
