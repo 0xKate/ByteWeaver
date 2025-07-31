@@ -177,8 +177,8 @@ namespace ByteWeaver {
     }
 
     bool MemoryManager::IsMemoryRangeValid(uintptr_t address, size_t length) {
-        size_t currentAddress = address;
-        size_t endAddress = address + length;
+        uintptr_t currentAddress = address;
+        uintptr_t endAddress = address + length;
 
         while (currentAddress < endAddress) {
             MEMORY_BASIC_INFORMATION mbi;
@@ -189,7 +189,7 @@ namespace ByteWeaver {
                 {
                     return false;
                 }
-                currentAddress = reinterpret_cast<size_t>(mbi.BaseAddress) + mbi.RegionSize;
+                currentAddress = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
             }
             else {
                 return false;

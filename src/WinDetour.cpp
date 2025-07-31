@@ -30,13 +30,13 @@ namespace ByteWeaver
             LONG result = DetourTransactionCommitEx(&failedPointer);
             if (result == NO_ERROR) {
                 if constexpr (ENABLE_DETOUR_LOGGING)
-                    debug("[Detour] (Apply) [Target: 0x%016llx -> Detour: 0x%016llx]", (void*)targetAddress, detourFunction);
+                    debug("[Detour] (Apply) [Target: 0x%016llx -> Detour: 0x%016llx]", reinterpret_cast<void*>(targetAddress), detourFunction);
                 isPatched = true;
 
                 if (Is64Bit)
-                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 14);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 14);
                 else
-                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 5);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 5);
 
                 return true;
             }
@@ -69,12 +69,12 @@ namespace ByteWeaver
                 isPatched = false;
 
                 if constexpr (ENABLE_DETOUR_LOGGING)
-                    debug("[Detour] (Restore) [Target: 0x%016llx -> Original: 0x%016llx]", (void*)targetAddress, originalFunction);
+                    debug("[Detour] (Restore) [Target: 0x%016llx -> Original: 0x%016llx]", reinterpret_cast<void*>(targetAddress), originalFunction);
 
                 if (Is64Bit)
-                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 14);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 14);
                 else
-                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 5);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 5);
 
                 return true;
             }

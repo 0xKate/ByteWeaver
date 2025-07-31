@@ -36,8 +36,8 @@ namespace ByteWeaver {
 		static void ApplyAll();
 		static void RestoreAll();
 
-		static bool IsLocationModified(uintptr_t startAddress, size_t length, std::vector<std::string>* detectedKeys);
-		static bool IsAddressValid(uintptr_t lpAddress);
+		static bool IsLocationModified(uintptr_t address, size_t length, std::vector<std::string>* detectedKeys);
+		static bool IsAddressValid(uintptr_t address);
 		static bool IsMemoryRangeValid(uintptr_t address, size_t length);
 		static bool IsAddressReadable(uintptr_t address);
 		static uintptr_t ReadAddress(uintptr_t address);
