@@ -3,10 +3,12 @@
 #include <ByteWeaver.h>
 #include <OffsetDB.h>
 
-namespace ByteWeaver{
-    std::vector<Offset> OffsetDB::offsets = std::vector<Offset>();
 
-    Offset::Offset(std::string_view name, std::wstring_view moduleName, uintptr_t offset)
+namespace ByteWeaver 
+{
+    std::unordered_map<std::string, Offset> OffsetDB::offsets = std::unordered_map<std::string, Offset>();
+
+    Offset::Offset(const std::string& name, const std::wstring& moduleName, uintptr_t offset)
         : name(name), moduleName(moduleName), offset(offset) {
     }
 
@@ -23,7 +25,7 @@ namespace ByteWeaver{
     }
 
     void OffsetDB::InitializeModuleBases() {
-        for (auto& off : OffsetDB::offsets) {
+        for (auto& [name, off] : offsets) {
             HMODULE mod = GetModuleHandleW(off.moduleName.c_str());
             if (!mod) {
                 error("Failed to get module base for: %ls", off.moduleName.c_str());
@@ -34,21 +36,23 @@ namespace ByteWeaver{
     }
 
     void OffsetDB::Add(const std::string& name, const std::wstring& moduleName, uintptr_t offset) {
-        OffsetDB::offsets.emplace_back(name, moduleName, offset);
+        offsets[name] = Offset{ name, moduleName, offset };
+    }
+
+    bool OffsetDB::Erase(const std::string& name) {
+        return offsets.erase(name) > 0;
     }
 
     const Offset* OffsetDB::Get(const std::string& name) {
-        for (const auto& off : OffsetDB::offsets) {
-            if (off.name == name)
-                return &off;
-        }
+        auto it = offsets.find(name);
+        if (it != offsets.end())
+            return &it->second;
         return nullptr;
     }
 
     void OffsetDB::DumpAll() {
-        for (const auto& off : OffsetDB::offsets)
-        {
+        for (const auto& [name, off] : offsets) {
             off.Dump();
         }
-    }
+    } 
 }

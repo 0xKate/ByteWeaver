@@ -17,6 +17,7 @@ namespace ByteWeaver {
     void MemoryManager::AddPatch(std::string key, std::shared_ptr<Patch> hPatch) {
         auto it = Patches.find(key);
         if (it != Patches.end()) {
+            warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
             RestoreAndErasePatch(key);
         }
         Patches[key] = hPatch;
@@ -44,6 +45,7 @@ namespace ByteWeaver {
     void MemoryManager::AddDetour(std::string key, std::shared_ptr<Detour> hDetour) {
         auto it = Detours.find(key);
         if (it != Detours.end()) {
+            warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
             RestoreAndEraseDetour(key);
         }
         Detours[key] = hDetour;
