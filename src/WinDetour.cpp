@@ -1,3 +1,5 @@
+// Copyright(C) 2025 0xKate - MIT License
+
 #include "PCH.h"
 #include "WinDetour.h"
 #include <detours.h>
@@ -31,6 +33,12 @@ namespace ByteWeaver
                 if constexpr (ENABLE_DETOUR_LOGGING)
                     debug("[Detour] (Apply) [Target: 0x%016llx -> Detour: 0x%016llx]", (void*)targetAddress, detourFunction);
                 isPatched = true;
+
+                if (Is64Bit)
+                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 14);
+                else
+                    FlushInstructionCache(GetCurrentProcess(), (void*)targetAddress, 5);
+
                 return true;
             }
             else {

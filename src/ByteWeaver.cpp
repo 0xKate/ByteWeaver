@@ -1,5 +1,4 @@
-﻿// ByteWeaver.cpp : Defines the entry point for the application.
-//
+﻿// Copyright(C) 2025 0xKate - MIT License
 
 #include "ByteWeaver.h"
 

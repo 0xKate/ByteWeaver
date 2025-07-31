@@ -1,3 +1,4 @@
+// Copyright(C) 2025 0xKate - MIT License
 #include "PCH.h"
 #include "WinPatch.h"
 #include <ByteWeaver.h>
