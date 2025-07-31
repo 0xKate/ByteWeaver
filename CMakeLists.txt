@@ -23,6 +23,9 @@ add_library(ByteWeaver STATIC
     "src/ByteWeaver.cpp"
     "src/WinDetour.cpp"
     "src/WinPatch.cpp"
+    "src/MemoryManager.cpp"
+    "src/OffsetDB.cpp"
+    "src/SigScanner.cpp"
 )
 
 target_include_directories(ByteWeaver PUBLIC

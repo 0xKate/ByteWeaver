@@ -1,3 +1,5 @@
+// Copyright(C) 2025 0xKate - MIT License
+
 #pragma once
 
 namespace ByteWeaver
