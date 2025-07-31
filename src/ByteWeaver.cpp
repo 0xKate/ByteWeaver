@@ -2,10 +2,6 @@
 
 #include "ByteWeaver.h"
 
-#include <cstdarg>
-#include <cstdio>
-#include <mutex>
-
 namespace ByteWeaver {
 
     static LogFunction logCallback = nullptr;

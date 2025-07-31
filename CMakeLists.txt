@@ -32,8 +32,6 @@ target_include_directories(ByteWeaver PUBLIC
 
 target_link_libraries(ByteWeaver PRIVATE "${DETOURS_LIB_PATH}")
 
-target_precompile_headers(ByteWeaver PRIVATE "<PCH.h>")
-
 target_compile_definitions(ByteWeaver PRIVATE DETOURS_STATIC
     $<$<CONFIG:Debug>:BYTEWEAVER_ENABLE_LOGGING=1>
     $<$<CONFIG:Release>:BYTEWEAVER_ENABLE_LOGGING=0>

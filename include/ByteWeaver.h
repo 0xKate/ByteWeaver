@@ -35,36 +35,56 @@ without consent, or any illegal activity is strictly prohibited.
 By using or distributing this software, you agree to comply with all
 applicable laws and to use it only in ethical and lawful ways.
 */
-
 #pragma once
 
-#include "PCH.h"
-
-#if defined(_M_X64)
-constexpr bool Is64Bit = true;
-#elif defined(_M_IX86)
-constexpr bool Is64Bit = false;
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>  // For MAX_PATH and Windows API calls
 #else
-#error "Unknown architecture"
+#include <climits>    // For PATH_MAX on Linux/Unix
+#include <unistd.h>   // For readlink and getpid
 #endif
+
+#include <string>
+#include <filesystem>
+#include <vector>
+#include <cstdint>
+#include <optional>
+#include <mutex>
+#include <map>
+#include <iostream>
+#include <thread>
+#include <sstream>
+#include <fstream>
+#include <TlHelp32.h>
+#include <cstdarg>
+#include <cstdio>
 
 #ifndef BYTEWEAVER_ENABLE_LOGGING
 #define BYTEWEAVER_ENABLE_LOGGING 0
 #endif
 
-#if BYTEWEAVER_ENABLE_LOGGING
-constexpr bool ENABLE_DETOUR_LOGGING = true;
-constexpr bool ENABLE_PATCH_LOGGING = true;
-
-#else
-constexpr bool ENABLE_DETOUR_LOGGING = false;
-constexpr bool ENABLE_PATCH_LOGGING = false;
-#endif
-
-namespace fs = std::filesystem;
-
-
 namespace ByteWeaver {
+
+    namespace fs = std::filesystem;
+
+    #if defined(_M_X64)
+    constexpr bool Is64Bit = true;
+    #elif defined(_M_IX86)
+    constexpr bool Is64Bit = false;
+    #else
+    #error "Unknown architecture"
+    #endif
+
+    #if BYTEWEAVER_ENABLE_LOGGING
+    constexpr bool ENABLE_DETOUR_LOGGING = true;
+    constexpr bool ENABLE_PATCH_LOGGING = true;
+
+    #else
+    constexpr bool ENABLE_DETOUR_LOGGING = false;
+    constexpr bool ENABLE_PATCH_LOGGING = false;
+    #endif
+
     // Signature expected for custom loggers
     using LogFunction = void(*)(int level, const char* msg);
 
