@@ -13,91 +13,72 @@ namespace ByteWeaver
 
     bool Patch::Apply()
     {
-        if (!this->isPatched)
-        {
-            DWORD oldProtection;
-            DWORD _;
-            void* targetPointer = reinterpret_cast<void*>(targetAddress);
+        if (this->isPatched)
+            return true;
+        
+        DWORD oldProtection;
+        DWORD _;
+        void* targetPointer = reinterpret_cast<void*>(targetAddress);
 
-            BOOL result = VirtualProtect(targetPointer, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection);
-            if (!result) {
-                DWORD errCode = GetLastError();
+        BOOL result = VirtualProtect(targetPointer, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection);
+        if (!result) {
+            DWORD errCode = GetLastError();
 
-                char buf[256];
-                FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                    nullptr,
-                    errCode,
-                    0,
-                    buf,
-                    sizeof(buf),
-                    nullptr
-                );
+            char buf[256];
+            FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                nullptr,
+                errCode,
+                0,
+                buf,
+                sizeof(buf),
+                nullptr
+            );
 
-                error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
-                    targetPointer,
-                    patchBytes.size(),
-                    errCode,
-                    buf);
+            error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
+                targetPointer,
+                patchBytes.size(),
+                errCode,
+                buf);
 
-                return false;
-            }                
+            return false;
+        }                
 
-            __try
-            {
-                memcpy(originalBytes.data(), targetPointer, patchBytes.size());   // Save original bytes
-                memcpy(targetPointer, patchBytes.data(), patchBytes.size());      // Apply patch
-                FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
-            }
-            __except (EXCEPTION_EXECUTE_HANDLER)
-            {
-                DWORD code = GetExceptionCode();
-
-                const char* reason = "Unknown";
-                switch (code)
-                {
-                case EXCEPTION_ACCESS_VIOLATION: reason = "Access Violation"; break;
-                case EXCEPTION_IN_PAGE_ERROR:    reason = "In-page Error"; break;
-                case EXCEPTION_GUARD_PAGE:       reason = "Guard Page Violation"; break;
-                case EXCEPTION_ILLEGAL_INSTRUCTION: reason = "Illegal Instruction"; break;
-                case EXCEPTION_PRIV_INSTRUCTION: reason = "Privileged Instruction"; break;
-                case EXCEPTION_DATATYPE_MISALIGNMENT: reason = "Datatype Misalignment"; break;
-                case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: reason = "Array Bounds Exceeded"; break;
-                    // add more as needed
-                }
-
-                error("[Patch] Exception writing patch at 0x%016llx (Length: %zu): 0x%08x (%s)",
-                    targetPointer,
-                    patchBytes.size(),
-                    code,
-                    reason);
-
-                return false;
-            }
-
-
-            VirtualProtect(targetPointer, patchBytes.size(), oldProtection, &_);
+        __try {
+            memcpy(originalBytes.data(), targetPointer, patchBytes.size());         // Save original bytes
+            memcpy(targetPointer, patchBytes.data(), patchBytes.size());            // Apply patch                
+            VirtualProtect(targetPointer, patchBytes.size(), oldProtection, &_);    // Restore old protection
 
             if constexpr (ENABLE_PATCH_LOGGING)
                 debug("[Patch] (Apply) [Address: 0x%016llx, Length: %zu]", targetAddress, patchBytes.size());
 
+            FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
+
             this->isPatched = true;
             return true;
+
         }
-        return true;
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            DWORD code = GetExceptionCode();
+            error("[Patch] Exception writing patch at 0x%016llx (Length: %zu): 0x%08x",
+                targetPointer,
+                patchBytes.size(),
+                code);
+
+            return false;
+        }
     }
 
     bool Patch::Restore()
     {
         if (!this->isPatched)
-            return false;
+            return true;
 
         DWORD oldProtection;
         DWORD _;
         void* targetPointer = reinterpret_cast<void*>(targetAddress);
 
         BOOL result = VirtualProtect(targetPointer, originalBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection);
-        if (!result)
-        {
+        if (!result) {
             DWORD errCode = GetLastError();
 
             char buf[256];
@@ -111,7 +92,7 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to change memory protection for restore at 0x%016llx (size: %zu). Error %lu: %s",
+            error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
                 targetAddress,
                 originalBytes.size(),
                 errCode,
@@ -120,43 +101,27 @@ namespace ByteWeaver
             return false;
         }
 
-        __try
-        {
-            memcpy(targetPointer, originalBytes.data(), originalBytes.size());
+        __try {
+            memcpy(targetPointer, originalBytes.data(), originalBytes.size());            // Restore original bytes
+            VirtualProtect(targetPointer, originalBytes.size(), oldProtection, &_);       // Restore old protection
+
+            if constexpr (ENABLE_PATCH_LOGGING)
+                debug("[Patch] (Restore) [Address: 0x%016llx, Length: %zu]", targetAddress, originalBytes.size());
+
             FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
+
+            this->isPatched = false;
+            return true;
         }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
+        __except (EXCEPTION_EXECUTE_HANDLER) {
             DWORD code = GetExceptionCode();
-            const char* reason = "Unknown";
-
-            switch (code)
-            {
-            case EXCEPTION_ACCESS_VIOLATION: reason = "Access Violation"; break;
-            case EXCEPTION_IN_PAGE_ERROR:    reason = "In-page Error"; break;
-            case EXCEPTION_GUARD_PAGE:       reason = "Guard Page Violation"; break;
-            case EXCEPTION_ILLEGAL_INSTRUCTION: reason = "Illegal Instruction"; break;
-            case EXCEPTION_PRIV_INSTRUCTION: reason = "Privileged Instruction"; break;
-            case EXCEPTION_DATATYPE_MISALIGNMENT: reason = "Datatype Misalignment"; break;
-            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: reason = "Array Bounds Exceeded"; break;
-            }
-
-            error("[Patch] Exception restoring memory at 0x%016llx (Length: %zu): 0x%08X (%s)",
+            error("[Patch] Exception restoring patch at 0x%016llx (Length: %zu): 0x%08X ",
                 targetAddress,
                 originalBytes.size(),
-                code,
-                reason);
+                code);
 
             return false;
-        }
-
-        VirtualProtect(targetPointer, originalBytes.size(), oldProtection, &_);
-
-        if constexpr (ENABLE_PATCH_LOGGING)
-            debug("[Patch] (Restore) [Address: 0x%016llx, Length: %zu]", targetAddress, originalBytes.size());
-
-        this->isPatched = false;
-        return true;
+        }        
     }
 
     bool Patch::Enable()
@@ -176,5 +141,4 @@ namespace ByteWeaver
         this->isEnabled = false;
         return Restore();
     }
-
 }

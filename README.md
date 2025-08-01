@@ -17,11 +17,9 @@
 ## 📦 Getting Started
 ByteWeaver is a static .lib ensure your build environment has it downloaded and located within an include directory.
 
-#### Include the main ByteWeaver.h or separate modules if desired.
+#### Include the main ByteWeaver.h
 ~~~cpp
 #include <ByteWeaver.h>
-#include <WinPatch.h>
-#include <WinDetour.h>
 ~~~
 
 <br/>
