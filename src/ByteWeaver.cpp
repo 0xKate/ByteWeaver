@@ -53,4 +53,4 @@ namespace ByteWeaver {
         va_end(args);
     }
 
-} // namespace byteweaver
+}

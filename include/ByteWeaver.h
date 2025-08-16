@@ -46,6 +46,9 @@
 #include <unistd.h>   // For readlink and getpid
 #endif
 
+#include <TlHelp32.h>
+
+// STD Lib
 #include <string>
 #include <filesystem>
 #include <vector>
@@ -57,9 +60,10 @@
 #include <thread>
 #include <sstream>
 #include <fstream>
-#include <TlHelp32.h>
 #include <cstdarg>
 #include <cstdio>
+#include <unordered_map>
+#include <utility> 
 
 #ifndef BYTEWEAVER_ENABLE_LOGGING
 #define BYTEWEAVER_ENABLE_LOGGING 0

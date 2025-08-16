@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 
-project(ByteWeaver VERSION 0.0.2 LANGUAGES CXX)
+project(ByteWeaver VERSION 0.1.3 LANGUAGES CXX)
 
 set(BASE_TARGET_NAME "ByteWeaver")
 
@@ -24,9 +24,11 @@ add_library(ByteWeaver STATIC
     "src/WinDetour.cpp"
     "src/WinPatch.cpp"
     "src/MemoryManager.cpp"
-    "src/OffsetDB.cpp"
-    "src/SigScanner.cpp"
-)
+    "src/AddressScanner.cpp"
+    "src/AddressEntry.cpp"
+    "src/AddressDB.cpp"
+    
+ "src/AddressDB.cpp")
 
 target_include_directories(ByteWeaver PUBLIC
     "external/detours"
