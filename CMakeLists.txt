@@ -27,8 +27,8 @@ add_library(ByteWeaver STATIC
     "src/AddressScanner.cpp"
     "src/AddressEntry.cpp"
     "src/AddressDB.cpp"
-    
- "src/AddressDB.cpp")
+    "src/DebugTools.cpp"
+)
 
 target_include_directories(ByteWeaver PUBLIC
     "external/detours"

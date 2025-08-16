@@ -1,5 +1,5 @@
+// Copyright(C) 2025 0xKate - MIT License
 
-// AddressEntry.cpp
 #include "ByteWeaver.h"
 #include "AddressEntry.h"
 #include "AddressScanner.h"

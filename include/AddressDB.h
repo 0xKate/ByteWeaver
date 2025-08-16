@@ -1,4 +1,7 @@
+// Copyright(C) 2025 0xKate - MIT License
+
 #pragma once
+
 #include "AddressEntry.h"
 
 namespace ByteWeaver {
