@@ -6,11 +6,13 @@
 namespace ByteWeaver {
 
     // ---- static storage ----
-    std::unordered_map<AddressDB::Key, AddressEntry, AddressDB::KeyHash> AddressDB::database_;
+    std::unordered_map<AddressDB::Key, AddressEntry, AddressDB::KeyHash> AddressDB::database_{};
+    std::shared_mutex AddressDB::mutex_{};
 
     // ---- add ----
     void AddressDB::Add(AddressEntry entry) {
         Key key{ entry.symbolName, entry.moduleName };
+        std::unique_lock lock(mutex_);
         auto it = database_.find(key);
         if (it == database_.end()) {
             database_.emplace(std::move(key), std::move(entry));
@@ -52,6 +54,7 @@ namespace ByteWeaver {
     }
 
     AddressEntry* AddressDB::Find(const Key& key) {
+        std::shared_lock lock(mutex_);
         auto it = database_.find(key);
         return (it == database_.end()) ? nullptr : &it->second;
     }
@@ -62,17 +65,86 @@ namespace ByteWeaver {
     }
 
     bool AddressDB::Remove(const Key& key) {
+        std::unique_lock lock(mutex_);
         return database_.erase(key) > 0;
     }
 
     void AddressDB::Clear() {
+        std::unique_lock lock(mutex_);
         database_.clear();
+    }
+
+    void AddressDB::UpdateAll()
+    {
+        for (auto& [key, value] : AddressDB::Mutate()) {
+            HMODULE hMod = GetModuleHandleW(key.second.c_str());
+            if (!hMod) {
+                error("[AddressScanner] Module %ls not loaded yet.", key.second.c_str());
+                continue;
+            }
+            value.SetModuleBase((uintptr_t)hMod);
+            value.Update();
+        }
     }
 
     // ---- debug ----
     void AddressDB::DumpAll() {
+        std::shared_lock lock(mutex_);
         for (auto& kv : database_) {
             kv.second.Dump();
         }
+    }
+
+    bool AddressDB::VerifyAll()
+    {
+        bool allGood = true;
+
+        debug("[AddressDB] Verifying all entries...");
+
+        for (auto& [key, entry] : AddressDB::Mutate())
+        {
+            if (entry.Verify()) {
+                debug("[AddressDB] %-17s : OK (0x%016llx)",
+                    entry.symbolName.c_str(),
+                    entry.targetAddress);
+                continue;
+            }
+
+            allGood = false;
+
+            const uintptr_t oldAddress = entry.targetAddress;
+            const uintptr_t oldModuleBase = entry.moduleAddress;
+            const uintptr_t oldOffset = entry.knownOffset.value_or(0);
+
+            const auto updatedAddress = entry.Update();
+            if (updatedAddress.has_value()) {
+                warn("[AddressDB] %-17s : UPDATED -> 0x%016llx (was 0x%016llx)",
+                    entry.symbolName.c_str(),
+                    updatedAddress.value(),
+                    oldAddress);
+
+                debug("[AddressDB] %-17s : base 0x%016llx -> 0x%016llx, offset 0x%llx -> 0x%llx",
+                    entry.symbolName.c_str(),
+                    oldModuleBase,
+                    entry.moduleAddress,
+                    oldOffset,
+                    entry.knownOffset.value_or(0));
+            }
+            else {
+                error("[AddressDB] %-17s : VERIFY FAILED and UPDATE FAILED (module=%ls)",
+                    entry.symbolName.c_str(),
+                    entry.moduleName.c_str());
+            }
+        }
+
+        if (allGood) {
+            info("[AddressDB] All entries verified successfully.");
+        }
+        else {
+            warn("[AddressDB] One or more entries failed verification. See messages above.");
+            AddressDB::DumpAll();
+        }
+
+        return allGood;
     }
 }

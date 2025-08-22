@@ -12,7 +12,7 @@ namespace ByteWeaver {
         const std::wstring moduleName;
 
         // Optional ways to resolve the address
-        const bool isSymbolExport;
+        const bool isSymbolExport = false;
         std::optional<uintptr_t> knownOffset;
         std::optional<std::string> scanPattern;
 
@@ -21,7 +21,7 @@ namespace ByteWeaver {
         uintptr_t targetAddress = 0x0;
 
         // --- Constructors ---
-        AddressEntry(std::string symbolName, std::wstring moduleName, bool isSymbolExport = true);
+        AddressEntry(std::string symbolName, std::wstring moduleName, bool isSymbolExport = false);
         static AddressEntry WithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address, bool isSymbolExport = false);
         static AddressEntry WithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset, bool isSymbolExport = false);
         static AddressEntry WithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern, bool isSymbolExport = false);
@@ -33,10 +33,14 @@ namespace ByteWeaver {
         void SetScanPattern(const std::string& pattern);
 
         // --- Accessors ---
-        uintptr_t GetAddress();
+        std::optional<uintptr_t> Update();
+        std::optional<uintptr_t> GetAddress() const;
+        std::optional<uintptr_t> GetAddress();
 
         // --- Debugging ---
-        void Dump();
+        void Dump() const;
+        bool Verify() const;
+
 
     private:
         // Cached parsed scan bytes

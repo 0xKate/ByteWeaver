@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 
-project(ByteWeaver VERSION 0.1.3 LANGUAGES CXX)
+project(ByteWeaver VERSION 0.2.11 LANGUAGES CXX)
 
 set(BASE_TARGET_NAME "ByteWeaver")
 
