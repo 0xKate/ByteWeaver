@@ -105,7 +105,7 @@ namespace ByteWeaver {
     {
         EnsureSymInit();
 
-        uintptr_t displacement = 0;
+        DWORD64 displacement = 0;  // SymFromAddr requires this type
         char buffer[sizeof(SYMBOL_INFO) + 512]{};
         auto* symbol = reinterpret_cast<SYMBOL_INFO*>(buffer);
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
@@ -115,28 +115,34 @@ namespace ByteWeaver {
         line.SizeOfStruct = sizeof(line);
         DWORD displacement32 = 0;
 
-        uintptr_t address = reinterpret_cast<uintptr_t>(stackPointer);
+        // Normalize the pointer to an integer we can print consistently
+        const unsigned long long addrULL =
+            static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(stackPointer));
+        const int nibbles = static_cast<int>(sizeof(void*) * 2);
 
-#if defined(_WIN64)
-        const char* ptrFmt = "%s0x%016llx";
-#else
-        const char* ptrFmt = "%s0x%08x";
-#endif
+        char msg[1025];
+        int len = sprintf_s(msg, sizeof(msg), "%s0x%0*llx",
+            (prefix ? prefix : ""), nibbles, addrULL);
 
-        char msg[1024];
-        int len = sprintf_s(msg, sizeof(msg), ptrFmt, prefix ? prefix : "", address);
         {
             std::lock_guard<std::mutex> lock(SymMutex);
-            if (SymLoaded && SymFromAddr(GetCurrentProcess(), address, &displacement, symbol)) {
+            if (SymLoaded && SymFromAddr(GetCurrentProcess(),
+                static_cast<DWORD64>(addrULL),
+                &displacement, symbol)) {
                 len += sprintf_s(msg + len, sizeof(msg) - len, "  %s", symbol->Name);
             }
-            if (SymLoaded && SymGetLineFromAddr64(GetCurrentProcess(), address, &displacement32, &line)) {
-                len += sprintf_s(msg + len, sizeof(msg) - len, "  [%s:%lu]", line.FileName, line.LineNumber);
+
+            if (SymLoaded && SymGetLineFromAddr64(GetCurrentProcess(),
+                static_cast<DWORD64>(addrULL),
+                &displacement32, &line)) {
+                len += sprintf_s(msg + len, sizeof(msg) - len,
+                    "  [%s:%lu]", line.FileName, line.LineNumber);
             }
         }
 
         debug("%s", msg);
     }
+
 
     // WARNING: Symbols WILL be initalized and you MUST call CleanupSymbols() if you want to detach gracefully.
     void DebugTools::PrintStackTrace()
