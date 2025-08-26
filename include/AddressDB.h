@@ -42,23 +42,19 @@ namespace ByteWeaver {
         static void Add(AddressEntry entry);  // uses entry.symbolName / entry.moduleName as key
 
         static void Add(std::string symbolName,
-            std::wstring moduleName,
-            bool isSymbolExport = false);
+            std::wstring moduleName);
 
         static void AddWithKnownAddress(std::string symbolName,
             std::wstring moduleName,
-            uintptr_t address,
-            bool isSymbolExport = false);
+            uintptr_t address);
 
         static void AddWithKnownOffset(std::string symbolName,
             std::wstring moduleName,
-            uintptr_t offset,
-            bool isSymbolExport = false);
+            uintptr_t offset);
 
         static void AddWithScanPattern(std::string symbolName,
             std::wstring moduleName,
-            std::string pattern,
-            bool isSymbolExport = false);
+            std::string pattern);
 
         // ----- Lookup -----
         static AddressEntry* Find(const std::string& symbolName, const std::wstring& moduleName);

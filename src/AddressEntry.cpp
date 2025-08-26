@@ -7,34 +7,34 @@
 namespace ByteWeaver {
 
     // --- Constructors ---
-    AddressEntry::AddressEntry(std::string symbolName, std::wstring moduleName, bool isSymbolExport)
-        : symbolName(std::move(symbolName)), moduleName(std::move(moduleName)), isSymbolExport(isSymbolExport) {
+    AddressEntry::AddressEntry(std::string symbolName, std::wstring moduleName)
+        : symbolName(std::move(symbolName)), moduleName(std::move(moduleName)) {
     }
 
     AddressEntry AddressEntry::WithKnownAddress(std::string symbolName,
         std::wstring moduleName,
-        uintptr_t address,
-        bool isSymbolExport) {
-        AddressEntry entry(std::move(symbolName), std::move(moduleName), isSymbolExport);
+        uintptr_t address) {
+        AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetKnownAddress(address);
+        entry.isSymbolExport = false;
         return entry;
     }
 
     AddressEntry AddressEntry::WithKnownOffset(std::string symbolName,
         std::wstring moduleName,
-        uintptr_t offset,
-        bool isSymbolExport) {
+        uintptr_t offset) {
         AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetKnownOffset(offset);
+        entry.isSymbolExport = false;
         return entry;
     }
 
     AddressEntry AddressEntry::WithScanPattern(std::string symbolName,
         std::wstring moduleName,
-        std::string pattern,
-        bool isSymbolExport) {
+        std::string pattern) {
         AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetScanPattern(pattern);
+        entry.isSymbolExport = false;
         return entry;
     }
 

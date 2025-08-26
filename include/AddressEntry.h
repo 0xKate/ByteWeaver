@@ -12,7 +12,7 @@ namespace ByteWeaver {
         const std::wstring moduleName;
 
         // Optional ways to resolve the address
-        const bool isSymbolExport = false;
+        bool isSymbolExport = true;
         std::optional<uintptr_t> knownOffset;
         std::optional<std::string> scanPattern;
 
@@ -21,10 +21,10 @@ namespace ByteWeaver {
         uintptr_t targetAddress = 0x0;
 
         // --- Constructors ---
-        AddressEntry(std::string symbolName, std::wstring moduleName, bool isSymbolExport = false);
-        static AddressEntry WithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address, bool isSymbolExport = false);
-        static AddressEntry WithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset, bool isSymbolExport = false);
-        static AddressEntry WithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern, bool isSymbolExport = false);
+        AddressEntry(std::string symbolName, std::wstring moduleName);
+        static AddressEntry WithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address);
+        static AddressEntry WithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset);
+        static AddressEntry WithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern);
 
         // --- Setters ---
         void SetModuleBase(uintptr_t moduleAddress);

@@ -23,29 +23,24 @@ namespace ByteWeaver {
         }
     }
 
-    void AddressDB::Add(std::string symbolName, std::wstring moduleName, bool isSymbolExport) {
-        Add(AddressEntry(std::move(symbolName), std::move(moduleName), isSymbolExport));
+    void AddressDB::Add(std::string symbolName, std::wstring moduleName) {
+        Add(AddressEntry(std::move(symbolName), std::move(moduleName)));
     }
 
-    void AddressDB::AddWithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address, bool isSymbolExport) {
-        Add(AddressEntry::WithKnownAddress(std::move(symbolName),
-            std::move(moduleName),
-            address,
-            isSymbolExport));
+    void AddressDB::AddWithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address) {
+        Add(AddressEntry::WithKnownAddress(std::move(symbolName), std::move(moduleName), address));
     }
 
-    void AddressDB::AddWithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset, bool isSymbolExport) {
+    void AddressDB::AddWithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset) {
         Add(AddressEntry::WithKnownOffset(std::move(symbolName),
             std::move(moduleName),
-            offset,
-            isSymbolExport));
+            offset));
     }
 
-    void AddressDB::AddWithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern, bool isSymbolExport) {
+    void AddressDB::AddWithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern) {
         Add(AddressEntry::WithScanPattern(std::move(symbolName),
             std::move(moduleName),
-            std::move(pattern),
-            isSymbolExport));
+            std::move(pattern)));
     }
 
     // ---- find ----
@@ -90,9 +85,11 @@ namespace ByteWeaver {
     // ---- debug ----
     void AddressDB::DumpAll() {
         std::shared_lock lock(mutex_);
+        debug("[AddressDB] Dumping database...");
         for (auto& kv : database_) {
             kv.second.Dump();
         }
+        debug("[AddressDB] Database dump complete.\n");
     }
 
     bool AddressDB::VerifyAll()
@@ -138,10 +135,10 @@ namespace ByteWeaver {
         }
 
         if (allGood) {
-            info("[AddressDB] All entries verified successfully.");
+            debug("[AddressDB] All entries verified successfully.\n");
         }
         else {
-            warn("[AddressDB] One or more entries failed verification. See messages above.");
+            warn("[AddressDB] One or more entries failed verification. See messages above.\n");
             AddressDB::DumpAll();
         }
 

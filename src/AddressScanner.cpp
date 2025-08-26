@@ -54,7 +54,7 @@ namespace ByteWeaver {
     }
 
     // ModuleSearch
-    std::optional<std::tuple<uintptr_t, uintptr_t, uintptr_t>> AddressScanner::ModuleSearch(const std::wstring& moduleName, const std::string& symbolName, const std::vector<std::optional<uint8_t>> pattern, size_t skipCount)
+    SearchResults AddressScanner::ModuleSearch(const std::wstring& moduleName, const std::string& symbolName, const std::vector<std::optional<uint8_t>> pattern, size_t skipCount)
     {
         HMODULE hMod = GetModuleHandleW(moduleName.c_str());
         if (!hMod) {
@@ -95,13 +95,13 @@ namespace ByteWeaver {
     }
 
     // ModuleSearch
-    std::optional<std::tuple<uintptr_t, uintptr_t, uintptr_t>> AddressScanner::ModuleSearch(const std::wstring& moduleName, const std::string& symbolName, const std::string& signature, size_t skipCount) {
+    SearchResults AddressScanner::ModuleSearch(const std::wstring& moduleName, const std::string& symbolName, const std::string& signature, size_t skipCount) {
         std::vector<std::optional<uint8_t>> pattern = AddressScanner::ParsePattern(signature);
         return ModuleSearch(moduleName, symbolName, pattern);
     }
 
     // LookupExportAddress
-    std::optional<std::tuple<uintptr_t, uintptr_t, uintptr_t>> AddressScanner::LookupExportAddress(const std::wstring& moduleName, const std::string& symbolName)
+    SearchResults AddressScanner::LookupExportAddress(const std::wstring& moduleName, const std::string& symbolName)
     {
         HMODULE hMod = GetModuleHandleW(moduleName.c_str());
         if (!hMod) {

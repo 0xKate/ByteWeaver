@@ -12,12 +12,8 @@ namespace ByteWeaver {
     std::mutex DebugTools::SymMutex;
     std::atomic<int> DebugTools::SymRefCount{ 0 };
     bool DebugTools::SymLoaded = false;
+    bool DebugTools::InvadeProcess = false;
     std::vector<const char*> DebugTools::TargetModules{ "kernel32.dll" };
-
-    void DebugTools::SetTargetModules(std::vector<const char*> targetModules)
-    {
-        TargetModules = targetModules;
-    }
 
     // WARNING: Symbols WILL be initalized and you MUST call CleanupSymbols() if you want to detach gracefully.
     void DebugTools::EnsureSymInit()
@@ -27,10 +23,15 @@ namespace ByteWeaver {
         (void)ok;
     }
 
+    void DebugTools::SetTargetModules(std::vector<const char*> targetModules)
+    {
+        TargetModules = targetModules;
+    }
+
     void DebugTools::LoadModuleSymbols()
     {
         HANDLE hProcess = GetCurrentProcess();
-
+        debug("[DebugTools] Loading module symbols...");
         for (auto name : TargetModules) {
             HMODULE hModule = GetModuleHandleA(name);
             if (!hModule)
@@ -52,12 +53,13 @@ namespace ByteWeaver {
                 moduleInfo.SizeOfImage,          // Size of module
                 nullptr, 0) == 0)
             {
-                debug("Failed to load symbols for %s", fullPath);
+                debug("[DebugTools] Failed to load symbols for %s", fullPath);
             }
             else {
-                debug("Loaded symbols for %s", fullPath);
+                debug("[DebugTools] Loaded symbols for %s", fullPath);
             }
         }
+        debug("[DebugTools] Finished loading symbols.\n");
     }
 
     bool DebugTools::InitSymbols()
@@ -70,7 +72,7 @@ namespace ByteWeaver {
             //SymSetSearchPath(GetCurrentProcess(),
             //    ".,SRV*c:\\symbols*https://msdl.microsoft.com/download/symbols");
 
-            if (!SymInitialize(GetCurrentProcess(), nullptr, /*fInvadeProcess=*/FALSE)) {
+            if (!SymInitialize(GetCurrentProcess(), nullptr, /*fInvadeProcess=*/InvadeProcess)) {
                 SymRefCount.fetch_sub(1);
                 return false;
             }
@@ -155,5 +157,75 @@ namespace ByteWeaver {
             PrintAddr(stack[i], prefix);
         }
     }
+
+    DebugTools::ReturnAddressInfo DebugTools::ResolveReturnAddress(const void* addr) {
+        ReturnAddressInfo info{};
+        info.returnAddress = const_cast<void*>(addr);
+        if (!addr) return info;
+
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (!VirtualQuery(addr, &mbi, sizeof(mbi))) return info;
+
+        HMODULE hmod = reinterpret_cast<HMODULE>(mbi.AllocationBase);
+        if (!hmod) return info;
+
+        info.moduleHandle = hmod;
+        info.moduleBase = reinterpret_cast<uintptr_t>(hmod);
+        info.offset = reinterpret_cast<uintptr_t>(addr) - info.moduleBase;
+
+        // get name and path data
+        char path[MAX_PATH]{};
+        if (GetModuleFileNameA(hmod, path, MAX_PATH)) {
+            info.modulePath = path;
+            info.moduleName = strrchr(path, '\\') ? strrchr(path, '\\') + 1 : path;
+        }
+
+        // Verify it looks like a mapped PE image and extract section
+        auto base = reinterpret_cast<const BYTE*>(hmod);
+
+        // DOS header
+        auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+        if (dos->e_magic == IMAGE_DOS_SIGNATURE) {
+            // NT headers
+            auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(
+                base + dos->e_lfanew);
+            if (nt->Signature == IMAGE_NT_SIGNATURE) {
+                info.isImageMapped = true;
+
+                // Locate section by RVA
+                DWORD rva = static_cast<DWORD>(info.offset);
+#ifdef _WIN64
+                const auto* nth = reinterpret_cast<const IMAGE_NT_HEADERS64*>(nt);
+                const IMAGE_FILE_HEADER& fh = nth->FileHeader;
+                const IMAGE_SECTION_HEADER* sec =
+                    IMAGE_FIRST_SECTION(nt);
+#else
+                const auto* nth = reinterpret_cast<const IMAGE_NT_HEADERS32*>(nt);
+                const IMAGE_FILE_HEADER& fh = nth->FileHeader;
+                const IMAGE_SECTION_HEADER* sec =
+                    IMAGE_FIRST_SECTION(nt);
+#endif
+                WORD nsec = fh.NumberOfSections;
+                for (WORD i = 0; i < nsec; ++i) {
+                    DWORD start = sec[i].VirtualAddress;
+                    DWORD size = sec[i].Misc.VirtualSize ? sec[i].Misc.VirtualSize
+                        : sec[i].SizeOfRawData;
+                    if (rva >= start && rva < start + size) {
+                        // Copy section name (8 bytes, not guaranteed null-terminated)
+                        size_t len = 0;
+                        while (len < 8 && sec[i].Name[len] != '\0') ++len;
+                        memcpy(info.section, sec[i].Name, len);
+                        info.section[len] = '\0';
+                        break;
+                    }
+                }
+            }
+        }
+
+        info.valid = true;
+        return info;
+    }
+
+
 
 }
