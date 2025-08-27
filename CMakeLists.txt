@@ -2,6 +2,9 @@
 
 project(ByteWeaver VERSION 0.2.14 LANGUAGES CXX)
 
+include(FetchContent)     # OK to include even though we use ExternalProject
+include(ExternalProject)
+
 set(BASE_TARGET_NAME "ByteWeaver")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -15,7 +18,49 @@ else()
     set(ARCH_SUFFIX "x86")
 endif()
 
-set(DETOURS_LIB_PATH "external/detours/lib/${ARCH_SUFFIX}/detours.lib")
+# ---- Detours Library Import ----
+set(DETOURS_GIT_REPO "https://github.com/microsoft/Detours.git")
+set(DETOURS_GIT_TAG  "v4.0.1")
+
+# Arch mapping for output folder names used by Detours
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(DETOURS_ARCH "X64")
+else()
+  set(DETOURS_ARCH "X86")
+endif()
+
+# Separate clone per-arch to avoid cross-arch collisions
+set(DETOURS_ROOT     "${CMAKE_BINARY_DIR}/_deps/detours-${DETOURS_ARCH}")
+set(DETOURS_REPO_DIR "${DETOURS_ROOT}")            # repo root after clone
+set(DETOURS_BUILDWD  "${DETOURS_REPO_DIR}/src")    # where we run nmake
+set(DETOURS_OUT_LIB  "${DETOURS_REPO_DIR}/lib.${DETOURS_ARCH}/detours.lib")
+set(DETOURS_OUT_INC  "${DETOURS_REPO_DIR}/include")
+
+# Make the include dir exist now so generator stops complaining
+file(MAKE_DIRECTORY "${DETOURS_OUT_INC}")
+
+ExternalProject_Add(detours_ep
+  GIT_REPOSITORY      ${DETOURS_GIT_REPO}
+  GIT_TAG             ${DETOURS_GIT_TAG}
+  GIT_PROGRESS        ON
+  UPDATE_DISCONNECTED 1
+  SOURCE_DIR          ${DETOURS_REPO_DIR}
+  CONFIGURE_COMMAND   ""              # no configure step
+  BUILD_IN_SOURCE     1
+  # Run nmake from detours/src (official build step)
+  BUILD_COMMAND       ${CMAKE_COMMAND} -E chdir ${DETOURS_BUILDWD} nmake
+  INSTALL_COMMAND     ""
+  LOG_BUILD           1
+)
+
+# Wrap the outputs in an IMPORTED target
+add_library(detours STATIC IMPORTED GLOBAL)
+set_target_properties(detours PROPERTIES
+  IMPORTED_LOCATION             "${DETOURS_OUT_LIB}"
+  INTERFACE_INCLUDE_DIRECTORIES "${DETOURS_OUT_INC}"
+)
+add_dependencies(detours detours_ep)
+
 
 # ---- DebugTools library ----
 add_library(DebugTools STATIC
@@ -37,12 +82,6 @@ target_include_directories(DebugTools
         "include/"
 )
 
-# per-config defines for DebugTools 
-target_compile_definitions(DebugTools
-    PRIVATE
-        $<$<CONFIG:Debug>:BYTEWEAVER_ENABLE_LOGGING=1>
-        $<$<CONFIG:Release>:BYTEWEAVER_ENABLE_LOGGING=0>
-)
 
 # In multi-config IDEs, don't build DebugTools by default for non-Debug configs
 # (so Release/RelWithDebInfo/MinSizeRel won't build it unless explicitly selected)
@@ -63,13 +102,12 @@ add_library(ByteWeaver STATIC
     "src/AddressDB.cpp"
 )
 
-target_include_directories(ByteWeaver PUBLIC
-    "external/detours/include/"
-    "include/"
-)
+# ByteWeaver Headers 
+target_include_directories(ByteWeaver PUBLIC "include/")
+
 
 # Link Detours always
-target_link_libraries(ByteWeaver PUBLIC "${DETOURS_LIB_PATH}")
+target_link_libraries(ByteWeaver PRIVATE detours)
 
 # Link DebugTools only for Debug configuration
 target_link_libraries(ByteWeaver
@@ -77,10 +115,6 @@ target_link_libraries(ByteWeaver
         $<$<CONFIG:Debug>:DebugTools>
 )
 
-target_compile_definitions(ByteWeaver PUBLIC DETOURS_STATIC
-    $<$<CONFIG:Debug>:BYTEWEAVER_ENABLE_LOGGING=1>
-    $<$<CONFIG:Release>:BYTEWEAVER_ENABLE_LOGGING=0>
-)
 
 set_target_properties(ByteWeaver PROPERTIES
     OUTPUT_NAME_DEBUG "${BASE_TARGET_NAME}-${ARCH_SUFFIX}-Debug"
@@ -90,7 +124,6 @@ set_target_properties(ByteWeaver PROPERTIES
 )
 
 # ---- Install rules ----
-
 install(TARGETS ByteWeaver
     ARCHIVE DESTINATION lib
 )
