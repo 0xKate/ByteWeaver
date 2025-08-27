@@ -75,9 +75,9 @@ namespace ByteWeaver {
                 debug(
                     "[AddressScanner] %s Signature found!\n"
                     " Module: % ls\n"
-                    " Base Address : 0x%016llx\n"
+                    " Base Address : " ADDR_FMT 
                     " Module Size  : 0x%zu\n"
-                    " Sig Address  : 0x%016llx\n"
+                    " Sig Address  : " ADDR_FMT 
                     " Offset       : 0x%llx\n",
                     symbolName.c_str(),
                     moduleName.c_str(),
@@ -126,9 +126,9 @@ namespace ByteWeaver {
             debug(
                 "[AddressScanner] %s Symbol found!\n"
                 " Module: % ls\n"
-                " Base Address : 0x%016llx\n"
+                " Base Address : " ADDR_FMT 
                 " Module Size  : 0x%zu\n"
-                " Sig Address  : 0x%016llx\n"
+                " Sig Address  : " ADDR_FMT 
                 " Offset       : 0x%llx\n",
                 symbolName.c_str(),
                 moduleName.c_str(),

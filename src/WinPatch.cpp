@@ -34,7 +34,7 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
+            error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
                 targetPointer,
                 patchBytes.size(),
                 errCode,
@@ -49,7 +49,7 @@ namespace ByteWeaver
             VirtualProtect(targetPointer, patchBytes.size(), oldProtection, &_);    // Restore old protection
 
             if constexpr (ENABLE_PATCH_LOGGING)
-                debug("[Patch] (Apply) [Address: 0x%016llx, Length: %zu]", targetAddress, patchBytes.size());
+                debug("[Patch] (Apply) [Address: " ADDR_FMT ", Length: %zu]", targetAddress, patchBytes.size());
 
             FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
 
@@ -59,7 +59,7 @@ namespace ByteWeaver
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             DWORD code = GetExceptionCode();
-            error("[Patch] Exception writing patch at 0x%016llx (Length: %zu): 0x%08x",
+            error("[Patch] Exception writing patch at " ADDR_FMT " (Length: %zu): 0x%08x",
                 targetPointer,
                 patchBytes.size(),
                 code);
@@ -92,7 +92,7 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to set permissions at 0x%016llx (size: %zu). Error %lu: %s",
+            error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
                 targetAddress,
                 originalBytes.size(),
                 errCode,
@@ -106,7 +106,7 @@ namespace ByteWeaver
             VirtualProtect(targetPointer, originalBytes.size(), oldProtection, &_);       // Restore old protection
 
             if constexpr (ENABLE_PATCH_LOGGING)
-                debug("[Patch] (Restore) [Address: 0x%016llx, Length: %zu]", targetAddress, originalBytes.size());
+                debug("[Patch] (Restore) [Address: " ADDR_FMT ", Length: %zu]", targetAddress, originalBytes.size());
 
             FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
 
@@ -115,7 +115,7 @@ namespace ByteWeaver
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             DWORD code = GetExceptionCode();
-            error("[Patch] Exception restoring patch at 0x%016llx (Length: %zu): 0x%08X ",
+            error("[Patch] Exception restoring patch at " ADDR_FMT " (Length: %zu): 0x%08X ",
                 targetAddress,
                 originalBytes.size(),
                 code);

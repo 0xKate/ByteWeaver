@@ -274,7 +274,7 @@ namespace ByteWeaver {
     {
         uintptr_t moduleBase = GetModuleBaseAddressFast(address);
         if (!moduleBase) {
-            error("[GetModuleBounds] Address 0x%016llx is not inside a module!", address);
+            error("[GetModuleBounds] Address " ADDR_FMT " is not inside a module!", address);
             return { 0,0 };
         }
 
@@ -282,6 +282,18 @@ namespace ByteWeaver {
         auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(moduleBase + dos->e_lfanew);
 
         return { moduleBase , moduleBase + nt->OptionalHeader.SizeOfImage };
+    }
+
+    fs::path MemoryManager::GetModulePath(uintptr_t address)
+    {
+        wchar_t buff[MAX_PATH];
+        DWORD n = GetModuleFileNameW(reinterpret_cast<HMODULE>(GetModuleBaseAddressFast(address)),
+            buff,
+            static_cast<DWORD>(std::size(buff)));
+        if (n == 0)
+            return {};
+
+        return fs::path(buff);
     }
 
 #ifdef _WIN64

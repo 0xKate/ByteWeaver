@@ -101,7 +101,7 @@ namespace ByteWeaver {
         for (auto& [key, entry] : AddressDB::Mutate())
         {
             if (entry.Verify()) {
-                debug("[AddressDB] %-17s : OK (0x%016llx)",
+                debug("[AddressDB] %-17s : OK (" ADDR_FMT ")",
                     entry.symbolName.c_str(),
                     entry.targetAddress);
                 continue;
@@ -115,12 +115,12 @@ namespace ByteWeaver {
 
             const auto updatedAddress = entry.Update();
             if (updatedAddress.has_value()) {
-                warn("[AddressDB] %-17s : UPDATED -> 0x%016llx (was 0x%016llx)",
+                warn("[AddressDB] %-17s : UPDATED -> " ADDR_FMT " (was " ADDR_FMT ")",
                     entry.symbolName.c_str(),
                     updatedAddress.value(),
                     oldAddress);
 
-                debug("[AddressDB] %-17s : base 0x%016llx -> 0x%016llx, offset 0x%llx -> 0x%llx",
+                debug("[AddressDB] %-17s : base " ADDR_FMT " -> " ADDR_FMT ", offset 0x%llx -> 0x%llx",
                     entry.symbolName.c_str(),
                     oldModuleBase,
                     entry.moduleAddress,
