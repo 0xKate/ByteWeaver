@@ -48,6 +48,7 @@ namespace ByteWeaver {
 		static uintptr_t GetModuleBaseAddressFast(const void* p);
 		static uintptr_t GetModuleBaseAddressFast(uintptr_t address);
 		static std::pair<uintptr_t, uintptr_t> GetModuleBounds(uintptr_t address);
+		static fs::path GetModulePath(uintptr_t moduleBase);
 
 #ifdef _WIN64
 		static std::pair<uintptr_t, uintptr_t> GetFunctionBounds(uintptr_t address);

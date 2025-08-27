@@ -63,9 +63,20 @@
 #include <cstdio>
 #include <unordered_map>
 #include <utility> 
+#include <array>
 
 #ifndef BYTEWEAVER_ENABLE_LOGGING
 #define BYTEWEAVER_ENABLE_LOGGING 0
+#endif
+
+#if defined(_WIN64)
+    #ifndef ADDR_FMT
+    #define ADDR_FMT "0x%016llx"
+    #endif // x64
+#else
+    #ifndef ADDR_FMT
+    #define ADDR_FMT "0x%08x"
+    #endif // x86
 #endif
 
 namespace ByteWeaver {

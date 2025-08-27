@@ -180,11 +180,11 @@ namespace ByteWeaver {
 
     // --- Debugging ---
     void AddressEntry::Dump() const {
-        debug(" --- %s Dump ---", symbolName.c_str());
-        debug(" Module Name   : %ls", moduleName.c_str());
-        debug(" Module Base   : 0x%016llx", (moduleAddress));
-        debug(" Offset        : 0x%llx", knownOffset.value_or(0));
-        debug(" Final Address : 0x%016llx\n", GetAddress());
+        debug("[AddressEntry] --- %s Dump ---", symbolName.c_str());
+        debug("[AddressEntry]  - Module Name   : %ls", moduleName.c_str());
+        debug("[AddressEntry]  - Module Base   : " ADDR_FMT, (moduleAddress));
+        debug("[AddressEntry]  - Offset        : 0x%llx", knownOffset.value_or(0));
+        debug("[AddressEntry]  - Final Address : " ADDR_FMT, GetAddress());
     }
 
     bool AddressEntry::Verify() const

@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 
-project(ByteWeaver VERSION 0.2.14 LANGUAGES CXX)
+project(ByteWeaver VERSION 0.2.16 LANGUAGES CXX)
 
 include(FetchContent)     # OK to include even though we use ExternalProject
 include(ExternalProject)
