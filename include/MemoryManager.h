@@ -45,7 +45,13 @@ namespace ByteWeaver {
 		static std::string_view ReadString(uintptr_t address);
 
 		static uintptr_t GetModuleBaseAddress(const wchar_t* moduleName);
-		static void GetModuleBounds(const wchar_t* moduleName, uintptr_t& start, uintptr_t& end);
+		static uintptr_t GetModuleBaseAddressFast(const void* p);
+		static uintptr_t GetModuleBaseAddressFast(uintptr_t address);
+		static std::pair<uintptr_t, uintptr_t> GetModuleBounds(uintptr_t address);
+
+#ifdef _WIN64
+		static std::pair<uintptr_t, uintptr_t> GetFunctionBounds(uintptr_t address);
+#endif
 
 		static fs::path ReadWindowsPath(const char* cstr);
 		static fs::path ReadWindowsPath(uintptr_t address);

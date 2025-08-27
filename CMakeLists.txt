@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 
-project(ByteWeaver VERSION 0.2.13 LANGUAGES CXX)
+project(ByteWeaver VERSION 0.2.14 LANGUAGES CXX)
 
 set(BASE_TARGET_NAME "ByteWeaver")
 
@@ -15,10 +15,44 @@ else()
     set(ARCH_SUFFIX "x86")
 endif()
 
-set(DETOURS_LIB_PATH "external/detours/lib/"ARCH_SUFFIX"/detours.lib")
+set(DETOURS_LIB_PATH "external/detours/lib/${ARCH_SUFFIX}/detours.lib")
+
+# ---- DebugTools library ----
+add_library(DebugTools STATIC
+    "src/DebugTools.cpp"
+)
+
+# DebugTools uses Windows libs (DbgHelp, Psapi), link them here.
+if(WIN32)
+    target_link_libraries(DebugTools
+        PRIVATE
+            Dbghelp
+            Psapi
+    )
+endif()
+
+# Expose headers
+target_include_directories(DebugTools
+    PUBLIC
+        "include/"
+)
+
+# per-config defines for DebugTools 
+target_compile_definitions(DebugTools
+    PRIVATE
+        $<$<CONFIG:Debug>:BYTEWEAVER_ENABLE_LOGGING=1>
+        $<$<CONFIG:Release>:BYTEWEAVER_ENABLE_LOGGING=0>
+)
+
+# In multi-config IDEs, don't build DebugTools by default for non-Debug configs
+# (so Release/RelWithDebInfo/MinSizeRel won't build it unless explicitly selected)
+set_target_properties(DebugTools PROPERTIES
+    EXCLUDE_FROM_DEFAULT_BUILD_Release TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_RelWithDebInfo TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_MinSizeRel TRUE
+)
 
 # ---- ByteWeaver library ----
-
 add_library(ByteWeaver STATIC
     "src/ByteWeaver.cpp"
     "src/WinDetour.cpp"
@@ -27,17 +61,23 @@ add_library(ByteWeaver STATIC
     "src/AddressScanner.cpp"
     "src/AddressEntry.cpp"
     "src/AddressDB.cpp"
-    "src/DebugTools.cpp"
 )
 
 target_include_directories(ByteWeaver PUBLIC
-    "external/detours"
+    "external/detours/include/"
     "include/"
 )
 
-target_link_libraries(ByteWeaver PRIVATE "${DETOURS_LIB_PATH}")
+# Link Detours always
+target_link_libraries(ByteWeaver PUBLIC "${DETOURS_LIB_PATH}")
 
-target_compile_definitions(ByteWeaver PRIVATE DETOURS_STATIC
+# Link DebugTools only for Debug configuration
+target_link_libraries(ByteWeaver
+    PUBLIC
+        $<$<CONFIG:Debug>:DebugTools>
+)
+
+target_compile_definitions(ByteWeaver PUBLIC DETOURS_STATIC
     $<$<CONFIG:Debug>:BYTEWEAVER_ENABLE_LOGGING=1>
     $<$<CONFIG:Release>:BYTEWEAVER_ENABLE_LOGGING=0>
 )
@@ -49,7 +89,15 @@ set_target_properties(ByteWeaver PROPERTIES
     OUTPUT_NAME_MINSIZEREL "${BASE_TARGET_NAME}-${ARCH_SUFFIX}-MinSizeRel"
 )
 
+# ---- Install rules ----
+
 install(TARGETS ByteWeaver
+    ARCHIVE DESTINATION lib
+)
+
+# Install DebugTools archive only for Debug builds
+install(TARGETS DebugTools
+    CONFIGURATIONS Debug
     ARCHIVE DESTINATION lib
 )
 

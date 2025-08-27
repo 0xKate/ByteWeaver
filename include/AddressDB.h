@@ -3,8 +3,6 @@
 #pragma once
 
 #include "AddressEntry.h"
-#include <shared_mutex>
-
 namespace ByteWeaver {
 
     class AddressDB {

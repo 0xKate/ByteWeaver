@@ -5,6 +5,7 @@
 #include "WinPatch.h"
 #include "WinDetour.h"
 
+
 namespace ByteWeaver {
     std::map<std::string, std::shared_ptr<Patch>> MemoryManager::Patches;
     std::map<std::string, std::shared_ptr<Detour>> MemoryManager::Detours;
@@ -253,29 +254,51 @@ namespace ByteWeaver {
             return 0;
         }
         else {
-            uint8_t* base = reinterpret_cast<uint8_t*>(hMod);
-            return reinterpret_cast<uintptr_t>(base);
+            return reinterpret_cast<uintptr_t>(hMod);
         }
     }
 
-    void MemoryManager::GetModuleBounds(const wchar_t* moduleName, uintptr_t& start, uintptr_t& end)
+    uintptr_t MemoryManager::GetModuleBaseAddressFast(const void* p)
     {
-        HMODULE hMod = GetModuleHandleW(moduleName);
-        if (!hMod) {
-            error("Module %ls not loaded yet!", moduleName);
-            start = end = 0;
-            return;
+        PVOID moduleBase = nullptr;
+        if (RtlPcToFileHeader(const_cast<void*>(p), &moduleBase))
+            return reinterpret_cast<uintptr_t>(moduleBase);
+        return 0;
+    }
+    uintptr_t MemoryManager::GetModuleBaseAddressFast(uintptr_t address)
+    {
+        return GetModuleBaseAddressFast(reinterpret_cast<void*>(address));
+    }
+
+    std::pair<uintptr_t, uintptr_t> MemoryManager::GetModuleBounds(uintptr_t address)
+    {
+        uintptr_t moduleBase = GetModuleBaseAddressFast(address);
+        if (!moduleBase) {
+            error("[GetModuleBounds] Address 0x%016llx is not inside a module!", address);
+            return { 0,0 };
         }
 
-        uint8_t* base = reinterpret_cast<uint8_t*>(hMod);
-        IMAGE_DOS_HEADER* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
-        IMAGE_NT_HEADERS64* nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+        auto* dos = reinterpret_cast<IMAGE_DOS_HEADER*>(moduleBase);
+        auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(moduleBase + dos->e_lfanew);
 
-        size_t moduleSize = nt->OptionalHeader.SizeOfImage;
-
-        start = reinterpret_cast<uintptr_t>(base);
-        end = start + moduleSize;
+        return { moduleBase , moduleBase + nt->OptionalHeader.SizeOfImage };
     }
+
+#ifdef _WIN64
+    std::pair<uintptr_t, uintptr_t> MemoryManager::GetFunctionBounds(uintptr_t address)
+    {
+        if (!address) return { 0, 0 };
+
+        DWORD64 imageBase = 0;
+        if (auto* rf = RtlLookupFunctionEntry(static_cast<DWORD64>(address), &imageBase, nullptr)) {
+            const auto start = static_cast<uintptr_t>(imageBase + rf->BeginAddress);
+            const auto end = static_cast<uintptr_t>(imageBase + rf->EndAddress);
+            return { start, end };
+        }
+        return { 0, 0 }; // e.g., in thunks or non-unwound regions
+    }
+#endif
+
 
     fs::path MemoryManager::ReadWindowsPath(const char* address) {
         std::string safe(address);

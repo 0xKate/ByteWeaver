@@ -46,8 +46,6 @@
 #include <unistd.h>   // For readlink and getpid
 #endif
 
-#include <TlHelp32.h>
-
 // STD Lib
 #include <string>
 #include <filesystem>
@@ -55,6 +53,7 @@
 #include <cstdint>
 #include <optional>
 #include <mutex>
+#include <shared_mutex>
 #include <map>
 #include <iostream>
 #include <thread>
