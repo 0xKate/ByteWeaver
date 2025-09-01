@@ -27,8 +27,7 @@ namespace ByteWeaver
             DetourAttach(originalFunction, detourFunction);
 
             PVOID* failedPointer = nullptr;
-            LONG result = DetourTransactionCommitEx(&failedPointer);
-            if (result == NO_ERROR) {
+            if (const LONG result = DetourTransactionCommitEx(&failedPointer); result == NO_ERROR) {
                 if constexpr (ENABLE_DETOUR_LOGGING)
                     debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]", reinterpret_cast<void*>(targetAddress), detourFunction);
                 isPatched = true;
@@ -46,7 +45,7 @@ namespace ByteWeaver
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            DWORD code = GetExceptionCode();
+            const DWORD code = GetExceptionCode();
             error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
         }
         return false;

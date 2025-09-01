@@ -14,15 +14,15 @@ namespace ByteWeaver {
 
 		static uintptr_t GetBaseAddress();
 
-		static void AddPatch(std::string key, std::shared_ptr<Patch> hPatch);
-		static void AddPatch(std::string key, Patch* hPatch);
-		static void ErasePatch(std::string key);
-		static void RestoreAndErasePatch(std::string key);
+		static void AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch);
+		static void AddPatch(const std::string& key, Patch* hPatch);
+		static void ErasePatch(const std::string& key);
+		static void RestoreAndErasePatch(const std::string& key);
 
-		static void AddDetour(std::string key, std::shared_ptr<Detour> hDetour);
-		static void AddDetour(std::string key, Detour* hDetour);
-		static void EraseDetour(std::string key);
-		static void RestoreAndEraseDetour(std::string key);
+		static void AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour);
+		static void AddDetour(const std::string& key, Detour* hDetour);
+		static void EraseDetour(const std::string& key);
+		static void RestoreAndEraseDetour(const std::string& key);
 
 		static void ApplyPatches();
 		static void RestorePatches();
@@ -30,8 +30,8 @@ namespace ByteWeaver {
 		static void ApplyDetours();
 		static void RestoreDetours();
 
-		static void ApplyByKey(std::string key);
-		static void RestoreByKey(std::string key);
+		static void ApplyByKey(const std::string& key);
+		static void RestoreByKey(const std::string& key);
 
 		static void ApplyAll();
 		static void RestoreAll();
@@ -41,8 +41,8 @@ namespace ByteWeaver {
 		static bool IsMemoryRangeValid(uintptr_t address, size_t length);
 		static bool IsAddressReadable(uintptr_t address);
 		static uintptr_t ReadAddress(uintptr_t address);
-		static std::string CopyString(uintptr_t address, size_t maxLength = 64);
-		static std::string_view ReadString(uintptr_t address);
+		static std::string ReadStringSafe(uintptr_t address, size_t maxLength = 64);
+		static std::string ReadString(uintptr_t address);
 
 		static uintptr_t GetModuleBaseAddress(const wchar_t* moduleName);
 		static uintptr_t GetModuleBaseAddressFast(const void* p);
@@ -54,7 +54,7 @@ namespace ByteWeaver {
 		static std::pair<uintptr_t, uintptr_t> GetFunctionBounds(uintptr_t address);
 #endif
 
-		static fs::path ReadWindowsPath(const char* cstr);
+		static fs::path ReadWindowsPath(const char* address);
 		static fs::path ReadWindowsPath(uintptr_t address);
 		static void WriteBufferToFile(uintptr_t address, size_t length, const fs::path& outPath);
 		static void WriteBufferToFile(const char* buffer, size_t length, const fs::path& outPath);

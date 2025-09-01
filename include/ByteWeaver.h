@@ -72,12 +72,22 @@
 #if defined(_WIN64)
     #ifndef ADDR_FMT
     #define ADDR_FMT "0x%016llx"
-    #endif // x64
+    #endif // ADDR_FMT
 #else
     #ifndef ADDR_FMT
     #define ADDR_FMT "0x%08x"
-    #endif // x86
+    #endif // ADDR_FMT
 #endif
+
+// --- xxhash ---
+extern "C" {
+#define XXH_STATIC_LINKING_ONLY
+#include "xxhash.h"
+}
+
+// --- nlohmann JSON ---
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 namespace ByteWeaver {
 

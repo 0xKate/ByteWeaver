@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 
-project(ByteWeaver VERSION 0.2.16 LANGUAGES CXX)
+project(ByteWeaver VERSION 0.2.17 LANGUAGES CXX)
 
 include(FetchContent)     # OK to include even though we use ExternalProject
 include(ExternalProject)
@@ -62,6 +62,13 @@ set_target_properties(detours PROPERTIES
 add_dependencies(detours detours_ep)
 
 
+# ---- JSON Lib ----
+FetchContent_Declare(
+        nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # ---- DebugTools library ----
 add_library(DebugTools STATIC
     "src/DebugTools.cpp"
@@ -73,12 +80,14 @@ if(WIN32)
         PRIVATE
             Dbghelp
             Psapi
+            nlohmann_json::nlohmann_json
     )
 endif()
 
 # Expose headers
 target_include_directories(DebugTools
     PUBLIC
+        "external/"
         "include/"
 )
 
@@ -93,18 +102,24 @@ set_target_properties(DebugTools PROPERTIES
 
 # ---- ByteWeaver library ----
 add_library(ByteWeaver STATIC
-    "src/ByteWeaver.cpp"
-    "src/WinDetour.cpp"
-    "src/WinPatch.cpp"
-    "src/MemoryManager.cpp"
-    "src/AddressScanner.cpp"
-    "src/AddressEntry.cpp"
-    "src/AddressDB.cpp"
+        "src/ByteWeaver.cpp"
+        "src/WinDetour.cpp"
+        "src/WinPatch.cpp"
+        "src/MemoryManager.cpp"
+        "src/AddressScanner.cpp"
+        "src/AddressEntry.cpp"
+        "src/AddressDB.cpp"
 )
 
-# ByteWeaver Headers 
-target_include_directories(ByteWeaver PUBLIC "include/")
 
+
+target_link_libraries(ByteWeaver PRIVATE nlohmann_json::nlohmann_json)
+
+# ByteWeaver Headers 
+target_include_directories(ByteWeaver PUBLIC
+        "external/"
+        "include/"
+)
 
 # Link Detours always
 target_link_libraries(ByteWeaver PRIVATE detours)
