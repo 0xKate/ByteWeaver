@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.24)
-project(ByteWeaverProject VERSION 0.3.19 LANGUAGES C CXX)
+project(ByteWeaverProject VERSION 0.3.20 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,17 +14,19 @@ else()
 endif()
 
 # --- Subprojects ---
-add_subdirectory(external/Detours)  # defines target: detours, detours_ep (and alias Detours::Detours)
-add_subdirectory(ByteWeaver)        # defines target: ByteWeaver (and alias ByteWeaver::ByteWeaver)
-add_subdirectory(DebugTools)        # defines target: DebugTools (and alias ByteWeaver::DebugTools)
-add_subdirectory(LogUtils)          # defines target: LogUtils (and alias ByteWeaver::LogUtils)
+add_subdirectory(external/Detours)   # defines: Detours (IMPORTED GLOBAL) + detours_ep
+add_subdirectory(ByteWeaver)         # defines: ByteWeaver
+add_subdirectory(DebugTools)
+add_subdirectory(LogUtils)
 
-# --- Linkage ---
-# ByteWeaver depends on Detours
+# Ensure detours.lib exists
+add_dependencies(ByteWeaver Detours)
+
+# Propagate Detours to consumers automatically
 target_link_libraries(ByteWeaver PUBLIC Detours::Detours)
 
 # DebugTools depends on ByteWeaver
-target_link_libraries(DebugTools PRIVATE ByteWeaver::ByteWeaver)
+target_link_libraries(DebugTools PRIVATE ByteWeaver)
 
 # --- Output names for ByteWeaver ---
 set_target_properties(ByteWeaver PROPERTIES
