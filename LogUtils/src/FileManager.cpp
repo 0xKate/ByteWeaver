@@ -1,4 +1,5 @@
-#include "PCH.h"
+
+#include "Shared.h"
 #include "FileManager.h"
 #include "Logger.h"
 
@@ -11,10 +12,10 @@ fs::path FileManager::LuaHomePath;
 
 std::string FileManager::GetProcessPath()
 {
-    char result[MAX_PATH_LENGTH];
+    char result[MAX_PATH];
 
 #ifdef _WIN32
-    if (GetModuleFileNameA(NULL, result, MAX_PATH_LENGTH) == 0) {
+    if (GetModuleFileNameA(nullptr, result, MAX_PATH) == 0) {
         throw std::runtime_error("Failed to get process path");
     }
 #else
@@ -25,7 +26,7 @@ std::string FileManager::GetProcessPath()
     result[count] = '\0';
 #endif
 
-    return std::string(result);
+    return {result};
 }
 
 int64_t FileManager::GetCurrentPID()
@@ -35,18 +36,6 @@ int64_t FileManager::GetCurrentPID()
 #else
     return static_cast<int64_t>(getpid());
 #endif
-}
-
-void FileManager::PrintBanner()
-{
-    Logger::log(
-        " _   _         _           _                          _ \n"
-        "( ) ( )       ( )_        ( )      /'\\_/`\\           ( )\n" 
-        "| |/'/'   _ _ | ,_)   __  |/   ___ |     |   _      _| |\n"
-        "| , <   /'_` )| |   /'__`\\   /',__)| (_) | /'_`\\  /'_` |\n"
-        "| |\\`\\ ( (_| || |_ (  ___/   \\__, \\| | | |( (_) )( (_| |\n"
-        "(_) (_)`\\__,_)`\\__)`\\____)   (____/(_) (_)`\\___/'`\\__,_)\n\n"
-    );
 }
 
 void FileManager::DumpPaths()

@@ -79,16 +79,6 @@
     #endif // ADDR_FMT
 #endif
 
-// --- xxhash ---
-extern "C" {
-#define XXH_STATIC_LINKING_ONLY
-#include "xxhash.h"
-}
-
-// --- nlohmann JSON ---
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
-
 namespace ByteWeaver {
 
     namespace fs = std::filesystem;

@@ -204,7 +204,7 @@ bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
 #ifdef _WIN64
     mi.IsPE32Plus = true;
 #else
-    mi.IsPE32Plus = (mi.Opt->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC);
+    mi.IsPE32Plus = mi.Opt->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC;
 #endif
 
     mi.Characteristics    = mi.FileHdr->Characteristics;

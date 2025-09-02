@@ -1,5 +1,6 @@
 #pragma once
-#include "PCH.h"
+
+#include "Shared.h"
 #include "Logger.h"
 #include "RemoteConsole.h"
 

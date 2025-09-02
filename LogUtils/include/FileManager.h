@@ -8,7 +8,6 @@ public:
 
 	static std::string GetProcessPath();
 	static int64_t GetCurrentPID();
-	static void PrintBanner();
 	static void Initialize(std::string project_dir);
 	static void DumpPaths();
 	static std::string ReadFile(const fs::path& path);
