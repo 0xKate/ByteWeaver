@@ -1,10 +1,6 @@
 # ---- ByteWeaver library ----
 add_library(ByteWeaver STATIC)
 
-# Use NEW behavior for download extraction timestamps
-cmake_policy(SET CMP0135 NEW)
-include(ExternalProject)
-
 target_sources(ByteWeaver PUBLIC
         "src/ByteWeaver.cpp"
         "src/WinDetour.cpp"

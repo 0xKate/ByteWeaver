@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
+
 include(ExternalProject)
+
+# Use NEW behavior for download extraction timestamps
+cmake_policy(SET CMP0135 NEW)
 
 # ---- Detours repo + arch mapping ----
 set(DETOURS_GIT_REPO "https://github.com/microsoft/Detours.git")

@@ -66,7 +66,13 @@
 #include <array>
 
 #ifndef BYTEWEAVER_ENABLE_LOGGING
-#define BYTEWEAVER_ENABLE_LOGGING 0
+  #ifndef NDEBUG
+    // Debug config (NDEBUG not defined)
+    #define BYTEWEAVER_ENABLE_LOGGING 1
+  #else
+    // Release-like configs (NDEBUG defined)
+    #define BYTEWEAVER_ENABLE_LOGGING 0
+  #endif
 #endif
 
 #if defined(_WIN64)
@@ -91,14 +97,14 @@ namespace ByteWeaver {
     #error "Unknown architecture"
     #endif
 
-    #if BYTEWEAVER_ENABLE_LOGGING
+#if defined(BYTEWEAVER_ENABLE_LOGGING) && BYTEWEAVER_ENABLE_LOGGING
     constexpr bool ENABLE_DETOUR_LOGGING = true;
-    constexpr bool ENABLE_PATCH_LOGGING = true;
-
-    #else
+    constexpr bool ENABLE_PATCH_LOGGING  = true;
+#else
     constexpr bool ENABLE_DETOUR_LOGGING = false;
-    constexpr bool ENABLE_PATCH_LOGGING = false;
-    #endif
+    constexpr bool ENABLE_PATCH_LOGGING  = false;
+#endif
+
 
     // Signature expected for custom loggers
     using LogFunction = void(*)(int level, const char* msg);

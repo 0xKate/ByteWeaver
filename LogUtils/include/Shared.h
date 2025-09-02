@@ -27,4 +27,7 @@
 #include <utility> 
 #include <array>
 
-namespace fs = std::filesystem;
+namespace LogUtils
+{
+    namespace fs = std::filesystem;
+}

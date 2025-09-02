@@ -3,9 +3,9 @@
 #include "FileManager.h"
 #include "Logger.h"
 
-
-
-// Define static members
+namespace LogUtils
+{
+    // Define static members
 fs::path FileManager::ProcessPath;
 fs::path FileManager::ProjectPath;
 fs::path FileManager::LuaHomePath;
@@ -120,4 +120,5 @@ bool FileManager::WriteFile(const std::string filePath, const std::string data, 
         std::cerr << "Exception occurred: " << e.what() << std::endl;
         return false;
     }
+}
 }

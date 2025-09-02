@@ -1,22 +1,27 @@
 #pragma once
 
-class RemoteConsole
+namespace LogUtils
 {
-private:
-    static std::atomic_bool AutoReconnect;
-    static std::atomic_bool Enabled;
-    static HANDLE Pipe;
-    static const char* PipeName;
-public:
-    static bool Connect();
-    static bool Reconnect();
-    static bool IsConnected();
-    static void Disconnect(bool disableReconnect = true);
-    static void Write(const std::string& msg);
-    static void SetAutoReconnect(bool enabled = true);
-    static void SetEnabled(bool enabled = true);
-    static bool IsEnabled();
-};
+    class RemoteConsole
+    {
+    private:
+        static std::atomic_bool AutoReconnect;
+        static std::atomic_bool Enabled;
+        static HANDLE Pipe;
+        static const char* PipeName;
+    public:
+        static bool Connect();
+        static bool Reconnect();
+        static bool IsConnected();
+        static void Disconnect(bool disableReconnect = true);
+        static void Write(const std::string& msg);
+        static void SetAutoReconnect(bool enabled = true);
+        static void SetEnabled(bool enabled = true);
+        static bool IsEnabled();
+    };
+}
+
+
 
 // Add list of commands and callbacks, move command reader code here
 
