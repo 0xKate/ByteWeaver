@@ -31,6 +31,7 @@ ExternalProject_Add(detours_ep
         UPDATE_DISCONNECTED 1
         SOURCE_DIR          ${DETOURS_REPO_DIR}
         CONFIGURE_COMMAND   ""            # no configure step
+        BUILD_BYPRODUCTS    ${DETOURS_OUT_LIB}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       ${CMAKE_COMMAND} -E chdir ${DETOURS_BUILDWD} nmake
         INSTALL_COMMAND     ""
