@@ -39,15 +39,14 @@ namespace ByteWeaver
 
                 return true;
             }
-            else {
-                const char* failMsg = failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
-                error("[Detour] Failed to apply! : %s", failMsg);             
-            }
+            const char* failMsg = failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
+            error("[Detour] Failed to apply! : %s", failMsg);
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             const DWORD code = GetExceptionCode();
             error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
         }
+        DetourTransactionAbort();
         return false;
     }
 
@@ -86,6 +85,7 @@ namespace ByteWeaver
             DWORD code = GetExceptionCode();
             error("[Detour] Exception occurred during Restore. Code: 0x%08X", code);
         }
+        DetourTransactionAbort();
         return false;
     }
 

@@ -17,6 +17,25 @@
 ## 📦 Getting Started
 ByteWeaver is a static .lib ensure your build environment has it downloaded and located within an include directory.
 
+Simply add this to your CmakeLists.txt and replace `YOUR_PROJECT` with your build target.
+
+~~~cmake
+# Fetch ByteWeaver (brings Detours too)
+include(FetchContent)
+FetchContent_Declare(
+        ByteWeaver
+        GIT_REPOSITORY https://github.com/0xKate/ByteWeaver.git
+        GIT_TAG        0.3.21
+)
+FetchContent_MakeAvailable(ByteWeaver)
+
+target_link_libraries(YOUR_PROJECT PRIVATE
+        ByteWeaver::ByteWeaver
+        ByteWeaver::DebugTools	# Optional
+        ByteWeaver::LogUtils	# Optional
+)
+~~~
+
 #### Include the main ByteWeaver.h
 ~~~cpp
 #include <ByteWeaver.h>
@@ -35,15 +54,3 @@ ByteWeaver is a static .lib ensure your build environment has it downloaded and 
 ~~~
 
 <br/>
-
-### Build Instructions
-
-~~~bash
-git clone https://github.com/yourname/ByteWeaver.git
-cd ByteWeaver
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-~~~
-
-✅ Both Debug and Release configurations are supported for x86 and x64 targets.
-
