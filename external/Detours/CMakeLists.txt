@@ -33,7 +33,7 @@ ExternalProject_Add(detours_ep
         CONFIGURE_COMMAND   ""            # no configure step
         BUILD_BYPRODUCTS    ${DETOURS_OUT_LIB}
         BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_COMMAND} -E chdir ${DETOURS_BUILDWD} nmake
+        BUILD_COMMAND       ${CMAKE_COMMAND} -E chdir ${DETOURS_BUILDWD} nmake DETOURS_TARGET_PROCESSOR=${DETOURS_ARCH}
         INSTALL_COMMAND     ""
         LOG_BUILD           1
 )
