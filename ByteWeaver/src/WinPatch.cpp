@@ -5,24 +5,23 @@
 
 namespace ByteWeaver
 {
-    Patch::Patch(uintptr_t patchAddress, std::vector<uint8_t> patchBytes)
-        : isEnabled(false), isPatched(false), targetAddress(patchAddress), patchBytes(std::move(patchBytes))
+    Patch::Patch(const uintptr_t patchAddress, std::vector<uint8_t> patchBytes)
+        : IsEnabled(false), IsPatched(false), TargetAddress(patchAddress), PatchBytes(std::move(patchBytes))
     {
-        originalBytes.resize(this->patchBytes.size());
+        OriginalBytes.resize(this->PatchBytes.size());
     }
 
     bool Patch::Apply()
     {
-        if (this->isPatched)
+        if (this->IsPatched)
             return true;
         
         DWORD oldProtection;
         DWORD _;
-        void* targetPointer = reinterpret_cast<void*>(targetAddress);
+        const auto targetPointer = reinterpret_cast<void*>(TargetAddress);
 
-        BOOL result = VirtualProtect(targetPointer, patchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection);
-        if (!result) {
-            DWORD errCode = GetLastError();
+        if (const bool result = VirtualProtect(targetPointer, PatchBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection); !result) {
+            const DWORD errCode = GetLastError();
 
             char buf[256];
             FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -34,9 +33,9 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
+            Error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
                 targetPointer,
-                patchBytes.size(),
+                PatchBytes.size(),
                 errCode,
                 buf);
 
@@ -44,24 +43,24 @@ namespace ByteWeaver
         }                
 
         __try {
-            memcpy(originalBytes.data(), targetPointer, patchBytes.size());         // Save original bytes
-            memcpy(targetPointer, patchBytes.data(), patchBytes.size());            // Apply patch                
-            VirtualProtect(targetPointer, patchBytes.size(), oldProtection, &_);    // Restore old protection
+            memcpy(OriginalBytes.data(), targetPointer, PatchBytes.size());         // Save original bytes
+            memcpy(targetPointer, PatchBytes.data(), PatchBytes.size());            // Apply patch
+            VirtualProtect(targetPointer, PatchBytes.size(), oldProtection, &_);    // Restore old protection
 
             if constexpr (ENABLE_PATCH_LOGGING)
-                debug("[Patch] (Apply) [Address: " ADDR_FMT ", Length: %zu]", targetAddress, patchBytes.size());
+                Debug("[Patch] (Apply) [Address: " ADDR_FMT ", Length: %zu]", TargetAddress, PatchBytes.size());
 
-            FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
+            FlushInstructionCache(GetCurrentProcess(), targetPointer, OriginalBytes.size());
 
-            this->isPatched = true;
+            this->IsPatched = true;
             return true;
 
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            DWORD code = GetExceptionCode();
-            error("[Patch] Exception writing patch at " ADDR_FMT " (Length: %zu): 0x%08x",
+            const DWORD code = GetExceptionCode();
+            Error("[Patch] Exception writing patch at " ADDR_FMT " (Length: %zu): 0x%08x",
                 targetPointer,
-                patchBytes.size(),
+                PatchBytes.size(),
                 code);
 
             return false;
@@ -70,16 +69,15 @@ namespace ByteWeaver
 
     bool Patch::Restore()
     {
-        if (!this->isPatched)
+        if (!this->IsPatched)
             return true;
 
         DWORD oldProtection;
         DWORD _;
-        void* targetPointer = reinterpret_cast<void*>(targetAddress);
+        const auto targetPointer = reinterpret_cast<void*>(TargetAddress);
 
-        BOOL result = VirtualProtect(targetPointer, originalBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection);
-        if (!result) {
-            DWORD errCode = GetLastError();
+        if (const bool result = VirtualProtect(targetPointer, OriginalBytes.size(), PAGE_EXECUTE_READWRITE, &oldProtection); !result) {
+            const DWORD errCode = GetLastError();
 
             char buf[256];
             FormatMessageA(
@@ -92,9 +90,9 @@ namespace ByteWeaver
                 nullptr
             );
 
-            error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
-                targetAddress,
-                originalBytes.size(),
+            Error("[Patch] Failed to set permissions at " ADDR_FMT " (size: %zu). Error %lu: %s",
+                TargetAddress,
+                OriginalBytes.size(),
                 errCode,
                 buf);
 
@@ -102,22 +100,22 @@ namespace ByteWeaver
         }
 
         __try {
-            memcpy(targetPointer, originalBytes.data(), originalBytes.size());            // Restore original bytes
-            VirtualProtect(targetPointer, originalBytes.size(), oldProtection, &_);       // Restore old protection
+            memcpy(targetPointer, OriginalBytes.data(), OriginalBytes.size());            // Restore original bytes
+            VirtualProtect(targetPointer, OriginalBytes.size(), oldProtection, &_);       // Restore old protection
 
             if constexpr (ENABLE_PATCH_LOGGING)
-                debug("[Patch] (Restore) [Address: " ADDR_FMT ", Length: %zu]", targetAddress, originalBytes.size());
+                Debug("[Patch] (Restore) [Address: " ADDR_FMT ", Length: %zu]", TargetAddress, OriginalBytes.size());
 
-            FlushInstructionCache(GetCurrentProcess(), targetPointer, originalBytes.size());
+            FlushInstructionCache(GetCurrentProcess(), targetPointer, OriginalBytes.size());
 
-            this->isPatched = false;
+            this->IsPatched = false;
             return true;
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            DWORD code = GetExceptionCode();
-            error("[Patch] Exception restoring patch at " ADDR_FMT " (Length: %zu): 0x%08X ",
-                targetAddress,
-                originalBytes.size(),
+            const DWORD code = GetExceptionCode();
+            Error("[Patch] Exception restoring patch at " ADDR_FMT " (Length: %zu): 0x%08X ",
+                TargetAddress,
+                OriginalBytes.size(),
                 code);
 
             return false;
@@ -126,19 +124,19 @@ namespace ByteWeaver
 
     bool Patch::Enable()
     {
-        if (this->isEnabled)
+        if (this->IsEnabled)
             return false;
 
-        this->isEnabled = true;
+        this->IsEnabled = true;
         return Apply();
     }
 
     bool Patch::Disable()
     {
-        if (!this->isEnabled)
+        if (!this->IsEnabled)
             return false;
 
-        this->isEnabled = false;
+        this->IsEnabled = false;
         return Restore();
     }
 }

@@ -1,19 +1,20 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include "ByteWeaver.h"
-#include "DebugTools.h"
+#include <DebugTools.h>
+#include <MemoryManager.h>
 
 #include <utility>
-#include "MemoryManager.h"
-
+#include <psapi.h>
 
 namespace ByteWeaver::DebugTools {
     // ---- SymbolLoader ----
     // Serialize all Sym* calls.
+    bool SymbolLoader::InvadeProcess = false;
+    bool SymbolLoader::SymLoaded = false;
     std::mutex SymbolLoader::SymMutex;
     std::atomic<int> SymbolLoader::SymRefCount{ 0 };
-    bool SymbolLoader::SymLoaded = false;
-    bool SymbolLoader::InvadeProcess = false;
+
+
     std::vector<const char*> SymbolLoader::TargetModules{ "kernel32.dll" };
 
     // --- Symbol Init/Teardown ---
@@ -34,7 +35,7 @@ namespace ByteWeaver::DebugTools {
     void SymbolLoader::LoadModuleSymbols()
     {
         const HANDLE& hProcess = GetCurrentProcess();
-        debug("[DebugTools] Loading module symbols...");
+        Debug("[DebugTools] Loading module symbols...");
         for (const auto name : TargetModules) {
             HMODULE hModule = GetModuleHandleA(name);
             if (!hModule)
@@ -56,13 +57,13 @@ namespace ByteWeaver::DebugTools {
                 moduleInfo.SizeOfImage,          // Size of module
                 nullptr, 0) == 0)
             {
-                debug("[DebugTools] Failed to load symbols for %s", fullPath);
+                Debug("[DebugTools] Failed to load symbols for %s", fullPath);
             }
             else {
-                debug("[DebugTools] Loaded symbols for %s", fullPath);
+                Debug("[DebugTools] Loaded symbols for %s", fullPath);
             }
         }
-        debug("[DebugTools] Finished loading symbols.\n");
+        Debug("[DebugTools] Finished loading symbols.\n");
     }
 
     bool SymbolLoader::InitSymbols()
@@ -148,7 +149,7 @@ namespace ByteWeaver::DebugTools {
 
         MEMORY_BASIC_INFORMATION mbi;
         if (const size_t result = VirtualQuery(reinterpret_cast<LPCVOID>(address), &mbi, sizeof(mbi)); result == 0 || result < sizeof(mbi)) {
-            warn("[FunctionInfo] VirtualQuery Failed!");
+            Warn("[FunctionInfo] VirtualQuery Failed!");
             info.FunctionValid = false;
         }
         else {
@@ -177,16 +178,16 @@ namespace ByteWeaver::DebugTools {
 }
 
 // Try to extract a display path/name for an allocation (works for MEM_IMAGE/MEM_MAPPED)
-void ProcessDumper::TryFillPathName(const uintptr_t anyVAInThisAllocation, std::filesystem::path& pathOut, std::wstring& nameOut) {
+void ProcessDumper::TryFillPathName(const uintptr_t anyVaInThisAllocation, std::filesystem::path& pathOut, std::wstring& nameOut) {
     wchar_t buf[MAX_PATH] = {};
-    if (GetMappedFileNameW(GetCurrentProcess(), const_cast<LPVOID>(reinterpret_cast<LPCVOID>(anyVAInThisAllocation)), buf, MAX_PATH) && buf[0]) {
+    if (GetMappedFileNameW(GetCurrentProcess(), const_cast<LPVOID>(reinterpret_cast<LPCVOID>(anyVaInThisAllocation)), buf, MAX_PATH) && buf[0]) {
         pathOut = buf;
         nameOut = pathOut.filename().wstring();
     }
 }
 
 // Fill PE-related fields if the allocation looks like a PE mapped at offset 0.
-bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
+bool ProcessDumper::TryParsePe(ModuleInfoEx& mi) {
     const auto base = mi.ModuleBase;
     if (!base) return false;
 
@@ -202,14 +203,14 @@ bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
     mi.Opt     = &nt->OptionalHeader;
 
 #ifdef _WIN64
-    mi.IsPE32Plus = true;
+    mi.IsPe32Plus = true;
 #else
-    mi.IsPE32Plus = mi.Opt->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+    mi.IsPe32Plus = mi.Opt->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC;
 #endif
 
     mi.Characteristics    = mi.FileHdr->Characteristics;
     mi.RelocationsStripped     = (mi.Characteristics & IMAGE_FILE_RELOCS_STRIPPED) != 0;
-    mi.IsDLL              = (mi.Characteristics & IMAGE_FILE_DLL) != 0;
+    mi.IsDll              = (mi.Characteristics & IMAGE_FILE_DLL) != 0;
     mi.DllCharacteristics = mi.Opt->DllCharacteristics;
     mi.SectionAlignment   = mi.Opt->SectionAlignment;
     mi.FileAlignment      = mi.Opt->FileAlignment;
@@ -229,12 +230,12 @@ bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
         std::memcpy(si.Name, sh.Name, 8);
         si.Name[8] = '\0';
         si.Characteristics = sh.Characteristics;
-        si.RVA        = sh.VirtualAddress;
+        si.Rva        = sh.VirtualAddress;
         si.VirtualSize= sh.Misc.VirtualSize;
         si.RawPtr     = sh.PointerToRawData;
         si.RawSize    = sh.SizeOfRawData;
-        si.VAStart    = mi.ModuleBase + si.RVA;
-        si.VAEnd      = si.VAStart + std::max<DWORD>(1, si.VirtualSize);
+        si.VaStart    = mi.ModuleBase + si.Rva;
+        si.VaEnd      = si.VaStart + std::max<DWORD>(1, si.VirtualSize);
         mi.Sections.push_back(si);
     }
 
@@ -242,12 +243,12 @@ bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
     for (size_t i = 0; i < mi.Dirs.size(); ++i) {
         const auto& [virtualAddress, size] = mi.Opt->DataDirectory[i];
         ModuleInfoEx::DirInfo di{};
-        di.RVA  = virtualAddress;
+        di.Rva  = virtualAddress;
         di.Size = size;
         if (i != IMAGE_DIRECTORY_ENTRY_SECURITY) {
-            di.VA = di.RVA ? mi.ModuleBase + di.RVA : 0;
+            di.Va = di.Rva ? mi.ModuleBase + di.Rva : 0;
         } else {
-            di.VA = 0; // file-only
+            di.Va = 0; // file-only
         }
         mi.Dirs[i] = di;
     }
@@ -265,9 +266,9 @@ bool ProcessDumper::TryParsePE(ModuleInfoEx& mi) {
     set(mi.TlsDir,           IMAGE_DIRECTORY_ENTRY_TLS);
     set(mi.LoadConfigDir,    IMAGE_DIRECTORY_ENTRY_LOAD_CONFIG);
     set(mi.BoundImportDir,   IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT);
-    set(mi.IATDir,           IMAGE_DIRECTORY_ENTRY_IAT);
+    set(mi.IatDir,           IMAGE_DIRECTORY_ENTRY_IAT);
     set(mi.DelayImportDir,   IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
-    set(mi.CLRDir,           IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR);
+    set(mi.ClrDir,           IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR);
     set(mi.ReservedDir,      15);
 
     mi.ModuleValid = true;
@@ -283,10 +284,10 @@ std::vector<ProcessDumper::ModuleInfoEx> ProcessDumper::EnumerateAllocationsAsMo
     const auto maxAddr = reinterpret_cast<uintptr_t>(si.lpMaximumApplicationAddress);
 
     struct Group {
-        uintptr_t allocationBase = 0;
-        std::vector<ModuleInfoEx::RegionInfo> regions;
-        uintptr_t minStart = UINTPTR_MAX;
-        uintptr_t maxEnd   = 0;
+        uintptr_t AllocationBase = 0;
+        std::vector<ModuleInfoEx::RegionInfo> Regions;
+        uintptr_t MinStart = UINTPTR_MAX;
+        uintptr_t MaxEnd   = 0;
     };
     std::unordered_map<uintptr_t, Group> groups;
     groups.reserve(1024);
@@ -317,15 +318,15 @@ std::vector<ProcessDumper::ModuleInfoEx> ProcessDumper::EnumerateAllocationsAsMo
 
     for (auto& [allocBase, g] : groups) {
         // Sort regions by Start for deterministic output
-        std::ranges::sort(g.regions,
+        std::ranges::sort(g.Regions,
                           [](const auto& a, const auto& b){ return a.Start < b.Start; });
 
         ModuleInfoEx mi{};
         mi.AllocationBase = allocBase;
         mi.ModuleBase     = allocBase;            // assume image at offset 0
-        mi.ModuleEnd      = g.maxEnd;
-        mi.ModuleSize     = g.maxEnd - allocBase;
-        mi.Regions        = std::move(g.regions);
+        mi.ModuleEnd      = g.MaxEnd;
+        mi.ModuleSize     = g.MaxEnd - allocBase;
+        mi.Regions        = std::move(g.Regions);
 
         // Try to get a path/name (works for mapped/image types)
         // Use the first region's address as a probe.
@@ -333,7 +334,7 @@ std::vector<ProcessDumper::ModuleInfoEx> ProcessDumper::EnumerateAllocationsAsMo
             TryFillPathName(mi.Regions.front().Start, mi.ModulePath, mi.ModuleName);
 
         // If PE present at allocation base, parse it fully.
-        if (TryParsePE(mi)) {
+        if (TryParsePe(mi)) {
             // If name still empty, try to synthesize from PE export name (optional)
             if (mi.ModuleName.empty()) {
                 // nothing fancy here—could be extended by reading export DLL name
@@ -355,7 +356,7 @@ std::vector<ProcessDumper::ModuleInfoEx> ProcessDumper::EnumerateAllocationsAsMo
 }
 
 // Convenience: find a "module" (allocation group) owning a VA
-const ProcessDumper::ModuleInfoEx* ProcessDumper::FindAllocationForVA(const std::vector<ModuleInfoEx>& mods, const uintptr_t va) {
+const ProcessDumper::ModuleInfoEx* ProcessDumper::FindAllocationForVa(const std::vector<ModuleInfoEx>& mods, const uintptr_t va) {
     for (const auto& m : mods) {
         if (va >= m.AllocationBase && va < m.ModuleEnd) return &m;
     }

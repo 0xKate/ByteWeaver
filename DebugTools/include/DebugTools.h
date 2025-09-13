@@ -2,10 +2,10 @@
 
 #pragma once
 
+#include "ByteWeaver.h"
+
 #include <dbghelp.h>
 #pragma comment(lib, "Dbghelp.lib")
-#include <psapi.h>
-
 
 namespace ByteWeaver::DebugTools {
 
@@ -38,13 +38,13 @@ namespace ByteWeaver::DebugTools {
             size_t ModuleSize = 0;
             bool ModuleValid = false;
 
-            void dump() const {
-                debug("[ModuleInfo] - Name         : %ws", ModuleName.c_str());
-                debug("[ModuleInfo] - Path         : %s", ModulePath.string().c_str());
-                debug("[ModuleInfo] - Base         : " ADDR_FMT, ModuleBase);
-                debug("[ModuleInfo] - End          : " ADDR_FMT, ModuleEnd);
-                debug("[ModuleInfo] - Size         : %zu bytes", ModuleSize);
-                debug("[ModuleInfo] - IsValid      : %s", ModuleValid ? L"true" : L"false");
+            void Dump() const {
+                Debug("[ModuleInfo] - Name         : %ws", ModuleName.c_str());
+                Debug("[ModuleInfo] - Path         : %s", ModulePath.string().c_str());
+                Debug("[ModuleInfo] - Base         : " ADDR_FMT, ModuleBase);
+                Debug("[ModuleInfo] - End          : " ADDR_FMT, ModuleEnd);
+                Debug("[ModuleInfo] - Size         : %zu bytes", ModuleSize);
+                Debug("[ModuleInfo] - IsValid      : %s", ModuleValid ? L"true" : L"false");
             }
         };
 
@@ -55,22 +55,22 @@ namespace ByteWeaver::DebugTools {
             bool Executable = false;
             bool FunctionValid = false;
 
-            void dump() const {
-                ModuleInfo::dump();
-                debug("[FunctionInfo] - FuncStart  : " ADDR_FMT, FunctionStart);
-                debug("[FunctionInfo] - FuncEnd    : " ADDR_FMT, FunctionEnd);
-                debug("[FunctionInfo] - FuncSize   : %zu bytes", FunctionSize);
-                debug("[FunctionInfo] - Executable : %s", Executable ? L"true" : L"false");
-                debug("[FunctionInfo] - IsValid    : %s", ModuleValid ? L"true" : L"false");
+            void Dump() const {
+                ModuleInfo::Dump();
+                Debug("[FunctionInfo] - FuncStart  : " ADDR_FMT, FunctionStart);
+                Debug("[FunctionInfo] - FuncEnd    : " ADDR_FMT, FunctionEnd);
+                Debug("[FunctionInfo] - FuncSize   : %zu bytes", FunctionSize);
+                Debug("[FunctionInfo] - Executable : %s", Executable ? L"true" : L"false");
+                Debug("[FunctionInfo] - IsValid    : %s", ModuleValid ? L"true" : L"false");
             }
         };
 
         static ModuleInfo GetModuleInfo(uintptr_t address);
         static ModuleInfo GetModuleInfo(const std::wstring& moduleName);
 
-        #ifdef _WIN64
+    #ifdef _WIN64
 		static FunctionInfo GetFunctionInfo(uintptr_t address);
-        #endif
+    #endif
 	};
 
     class Traceback {
@@ -78,7 +78,7 @@ namespace ByteWeaver::DebugTools {
         struct FrameInfo {
             uintptr_t CallAddress{};
             USHORT    StackIndex{};
-            void dump() const
+            void Dump() const
             {
                 char msg[1024];
                 int len = _snprintf_s(msg, sizeof(msg), _TRUNCATE,
@@ -88,7 +88,7 @@ namespace ByteWeaver::DebugTools {
 
                 if (SymbolLoader::SymLoaded) {
                     DWORD64 displacement = 0;
-                    DWORD   displacement32 = 0;
+                    DWORD displacement32 = 0;
 
                     // SYMBOL_INFO 
                     // ReSharper disable once CppLocalVariableMayBeConst
@@ -107,18 +107,21 @@ namespace ByteWeaver::DebugTools {
                             "  %s+0x%llx",
                             symbol->Name,
                             static_cast<unsigned long long>(displacement));
+                        // ReSharper disable once CppDFAUnusedValue
                         if (n > 0) len += n;
                     }
 
-                    if (SymGetLineFromAddr64(GetCurrentProcess(), CallAddress, &displacement32, &line)) {
-                        _snprintf_s(msg + len, sizeof(msg) - len, _TRUNCATE,
-                            "  [%s:%lu]",
-                            line.FileName,
-                            static_cast<unsigned long>(line.LineNumber));
+                    if constexpr (WIN64) {
+                        if (SymGetLineFromAddr64(GetCurrentProcess(), CallAddress, &displacement32, &line)) {
+                            _snprintf_s(msg + len, sizeof(msg) - len, _TRUNCATE,
+                                "  [%s:%lu]",
+                                line.FileName,
+                                static_cast<unsigned long>(line.LineNumber));
+                        }
                     }
                 }
 
-                debug("%s", msg);
+                Debug("%s", msg);
             }
 
         };
@@ -127,9 +130,9 @@ namespace ByteWeaver::DebugTools {
             USHORT StackSize{};
             std::array<void*, 62> Stack{};
             std::vector<FrameInfo> Frames{};
-            void dump() const {
+            void Dump() const {
                 for (FrameInfo frame : Frames) {
-                    frame.dump();
+                    frame.Dump();
                 }
             }
         };
@@ -184,8 +187,8 @@ namespace ByteWeaver::DebugTools {
             PIMAGE_OPTIONAL_HEADER  Opt = nullptr;
             PIMAGE_SECTION_HEADER   FirstSection = nullptr;
 
-            bool      IsPE32Plus = false;
-            bool      IsDLL      = false;
+            bool      IsPe32Plus = false;
+            bool      IsDll      = false;
             bool      RelocationsStripped = false;
 
             DWORD     Characteristics = 0;
@@ -198,40 +201,40 @@ namespace ByteWeaver::DebugTools {
             struct SectionInfo {
                 char      Name[9]{};
                 DWORD     Characteristics = 0;
-                DWORD     RVA = 0;
+                DWORD     Rva = 0;
                 DWORD     VirtualSize = 0;
                 DWORD     RawPtr = 0;
                 DWORD     RawSize = 0;
-                uintptr_t VAStart = 0;
-                uintptr_t VAEnd   = 0;
-                [[nodiscard]] bool ContainsRva(DWORD rva) const {
-                    return rva >= RVA && rva < (RVA + std::max<DWORD>(1, VirtualSize));
+                uintptr_t VaStart = 0;
+                uintptr_t VaEnd   = 0;
+                bool ContainsRva(const DWORD rva) const {
+                    return rva >= Rva && rva < Rva + std::max<DWORD>(1, VirtualSize);
                 }
-                [[nodiscard]] bool ContainsVa(uintptr_t va) const {
-                    return va >= VAStart && va < VAEnd;
+                bool ContainsVa(const uintptr_t va) const {
+                    return va >= VaStart && va < VaEnd;
                 }
             };
             std::vector<SectionInfo> Sections;
 
             struct DirInfo {
-                DWORD     RVA = 0;
+                DWORD     Rva = 0;
                 DWORD     Size = 0;
-                uintptr_t VA = 0; // 0 for Security (file-only)
-                [[nodiscard]] bool Present() const { return RVA && Size; }
+                uintptr_t Va = 0; // 0 for Security (file-only)
+                bool Present() const { return Rva && Size; }
             };
             std::array<DirInfo, IMAGE_NUMBEROF_DIRECTORY_ENTRIES> Dirs{};
             DirInfo ExportDir, ImportDir, ResourceDir, ExceptionDir, SecurityDir, BaseRelocDir,
                     DebugDir, ArchitectureDir, GlobalPtrDir, TlsDir, LoadConfigDir, BoundImportDir,
-                    IATDir, DelayImportDir, CLRDir, ReservedDir;
+                    IatDir, DelayImportDir, ClrDir, ReservedDir;
 
             // RVA/VA helpers (valid only if ModuleBase set)
-            [[nodiscard]] uintptr_t RVAtoVA(const DWORD rva) const { return rva ? (ModuleBase + rva) : 0; }
-            [[nodiscard]] DWORD     VAtoRVA(const uintptr_t va) const { return (va >= ModuleBase && va < ModuleEnd) ? static_cast<DWORD>(va - ModuleBase) : 0; }
+            uintptr_t RvaToVa(const DWORD rva) const { return rva ? ModuleBase + rva : 0; }
+            DWORD     VaToRva(const uintptr_t va) const { return va >= ModuleBase && va < ModuleEnd ? static_cast<DWORD>(va - ModuleBase) : 0; }
 
-            [[nodiscard]] DWORD RVAtoFileOffset(const DWORD rva) const {
+            DWORD RvaToFileOffset(const DWORD rva) const {
                 for (const auto& s : Sections) {
                     if (s.ContainsRva(rva)) {
-                        const DWORD delta = rva - s.RVA;
+                        const DWORD delta = rva - s.Rva;
                         if (delta >= s.RawSize) return 0;
                         return s.RawPtr + delta;
                     }
@@ -241,12 +244,12 @@ namespace ByteWeaver::DebugTools {
         };
 
         static std::vector<ModuleInfoEx> EnumerateAllocationsAsModules();
-        static const ModuleInfoEx* FindAllocationForVA(const std::vector<ModuleInfoEx>& mods, uintptr_t va);
+        static const ModuleInfoEx* FindAllocationForVa(const std::vector<ModuleInfoEx>& mods, uintptr_t va);
 
     private:
         static void AppendRegion(const MEMORY_BASIC_INFORMATION& mbi, ModuleInfoEx::RegionInfo& out);
-        static void TryFillPathName(uintptr_t anyVAInThisAllocation, std::filesystem::path& pathOut,
+        static void TryFillPathName(uintptr_t anyVaInThisAllocation, std::filesystem::path& pathOut,
                                     std::wstring& nameOut);
-        static bool TryParsePE(ModuleInfoEx& mi);
+        static bool TryParsePe(ModuleInfoEx& mi);
     };
 }

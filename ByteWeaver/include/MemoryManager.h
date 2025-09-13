@@ -61,12 +61,12 @@ namespace ByteWeaver {
 
 		template<typename T>
 		static T Read(uintptr_t address) {
-			return *(reinterpret_cast<T*>(address));
+			return *reinterpret_cast<T*>(address);
 		}
 
 		template<typename T>
 		static void Write(uintptr_t address, T value) {
-			*(reinterpret_cast<T*>(address)) = value;
+			*reinterpret_cast<T*>(address) = value;
 		}
 	};
 }

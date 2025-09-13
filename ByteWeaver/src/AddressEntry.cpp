@@ -8,183 +8,166 @@ namespace ByteWeaver {
 
     // --- Constructors ---
     AddressEntry::AddressEntry(std::string symbolName, std::wstring moduleName)
-        : symbolName(std::move(symbolName)), moduleName(std::move(moduleName)) {
+        : SymbolName(std::move(symbolName)), ModuleName(std::move(moduleName)) {
     }
 
     AddressEntry AddressEntry::WithKnownAddress(std::string symbolName,
         std::wstring moduleName,
-        uintptr_t address) {
+        const uintptr_t address) {
         AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetKnownAddress(address);
-        entry.isSymbolExport = false;
+        entry.IsSymbolExport = false;
         return entry;
     }
 
     AddressEntry AddressEntry::WithKnownOffset(std::string symbolName,
         std::wstring moduleName,
-        uintptr_t offset) {
+        const uintptr_t offset) {
         AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetKnownOffset(offset);
-        entry.isSymbolExport = false;
+        entry.IsSymbolExport = false;
         return entry;
     }
 
     AddressEntry AddressEntry::WithScanPattern(std::string symbolName,
         std::wstring moduleName,
-        std::string pattern) {
+        const std::string& pattern) {
         AddressEntry entry(std::move(symbolName), std::move(moduleName));
         entry.SetScanPattern(pattern);
-        entry.isSymbolExport = false;
+        entry.IsSymbolExport = false;
         return entry;
     }
 
     // --- Setters ---
-    void AddressEntry::SetModuleBase(uintptr_t moduleAddress) {
-        this->moduleAddress = moduleAddress;
+    void AddressEntry::SetModuleBase(const uintptr_t moduleAddress) {
+        this->ModuleAddress = moduleAddress;
     }
 
-    void AddressEntry::SetKnownAddress(uintptr_t targetAddress) {
-        this->targetAddress = targetAddress;
+    void AddressEntry::SetKnownAddress(const uintptr_t targetAddress) {
+        this->TargetAddress = targetAddress;
     }
 
     void AddressEntry::SetKnownOffset(uintptr_t offset) {
-        this->knownOffset = offset;
+        this->KnownOffset = offset;
     }
 
     void AddressEntry::SetScanPattern(const std::string& pattern) {
-        this->scanPattern = pattern;
-        this->scanBytes_ = AddressScanner::ParsePattern(pattern);
+        this->ScanPattern = pattern;
+        this->_ScanBytes = AddressScanner::ParsePattern(pattern);
     }
 
     // --- Accessors ---
     std::optional<uintptr_t> AddressEntry::Update()
     {
         // Case 2: exported symbol
-        if (isSymbolExport) {
-            auto scan = AddressScanner::LookupExportAddress(moduleName, symbolName);
-            if (scan.has_value()) {
+        if (IsSymbolExport) {
+            if (auto scan = AddressScanner::LookupExportAddress(ModuleName, SymbolName); scan.has_value()) {
                 auto& [moduleBase, sigAddress, offset] = scan.value();
                 SetModuleBase(moduleBase);
                 SetKnownAddress(sigAddress);
                 SetKnownOffset(offset);
-                return targetAddress;
+                return TargetAddress;
             }
-            else {
-                error("[AddressEntry] Failed to lookup address by symbolName for %s", symbolName.c_str());
-            }
+            Error("[AddressEntry] Failed to lookup address by symbolName for %s", SymbolName.c_str());
         }
         // Case 3: pattern scan
-        else if (scanBytes_.has_value()) {
-            auto scan = AddressScanner::ModuleSearch(moduleName, symbolName, scanBytes_.value());
-            if (scan.has_value()) {
+        else if (_ScanBytes.has_value()) {
+            if (auto scan = AddressScanner::ModuleSearch(ModuleName, SymbolName, _ScanBytes.value()); scan.has_value()) {
                 auto& [moduleBase, sigAddress, offset] = scan.value();
                 SetModuleBase(moduleBase);
                 SetKnownAddress(sigAddress);
                 SetKnownOffset(offset);
-                return targetAddress;
+                return TargetAddress;
             }
-            else {
-                error("[AddressEntry] Failed to lookup address by pattern scan for %s", symbolName.c_str());
-            }
-        // Case 1: moduleBase + offset
-        } else if (moduleAddress > 0 && knownOffset.value_or(0) > 0) {
-            SetKnownAddress(moduleAddress + knownOffset.value());
-            return targetAddress;
+            Error("[AddressEntry] Failed to lookup address by pattern scan for %s", SymbolName.c_str());
+            // Case 1: moduleBase + offset
+        } else if (ModuleAddress > 0 && KnownOffset.value_or(0) > 0) {
+            SetKnownAddress(ModuleAddress + KnownOffset.value());
+            return TargetAddress;
         }
         // Case 4: moduleName + offset
-        else if (!moduleName.empty() && knownOffset.value_or(0) > 0) {
-            HMODULE hMod = GetModuleHandleW(moduleName.c_str());
+        else if (!ModuleName.empty() && KnownOffset.value_or(0) > 0) {
+            HMODULE hMod = GetModuleHandleW(ModuleName.c_str());
             if (!hMod) {
-                error("[AddressScanner] Module %ls not loaded yet.", moduleName.c_str());
+                Error("[AddressScanner] Module %ls not loaded yet.", ModuleName.c_str());
                 return std::nullopt;
             }
-            SetModuleBase((uintptr_t)hMod);
-            SetKnownAddress((uintptr_t)hMod + knownOffset.value());
-            return targetAddress;
+            SetModuleBase(reinterpret_cast<uintptr_t>(hMod));
+            SetKnownAddress(reinterpret_cast<uintptr_t>(hMod) + KnownOffset.value());
+            return TargetAddress;
         }
 
-        error("[AddressEntry] Complete failure to find address for symbol %s", symbolName.c_str());
+        Error("[AddressEntry] Complete failure to find address for symbol %s", SymbolName.c_str());
         return std::nullopt;    
     }
 
     std::optional<uintptr_t> AddressEntry::GetAddress() const {
-        if (targetAddress)
-            return targetAddress;
+        if (TargetAddress)
+            return TargetAddress;
         // Case 1: module base + known offset
-        else        
-        if (moduleAddress > 0 && knownOffset.value_or(0) > 0) {
-            return moduleAddress + knownOffset.value();
+        if (ModuleAddress > 0 && KnownOffset.value_or(0) > 0) {
+            return ModuleAddress + KnownOffset.value();
         }
         // Case 2: exported symbol
-        else        
-        if (isSymbolExport) {
-            auto scan = AddressScanner::LookupExportAddress(moduleName, symbolName);
-            if (scan.has_value()) {
+        if (IsSymbolExport) {
+            if (auto scan = AddressScanner::LookupExportAddress(ModuleName, SymbolName); scan.has_value()) {
                 auto& [moduleBase, sigAddress, offset] = scan.value();
-                warn("[AddressEntry] Warning: const access against non-updated entry (%s). consider calling entry::Update()", symbolName.c_str());
+                Warn("[AddressEntry] Warning: const access against non-updated entry (%s). consider calling entry::Update()", SymbolName.c_str());
                 return sigAddress;
             }
-            else {
-                error("[AddressEntry] Failed to lookup address by symbolName for %s", symbolName.c_str());
-            }
+            Error("[AddressEntry] Failed to lookup address by symbolName for %s", SymbolName.c_str());
         }
         // Case 3: pattern scan
         else
-        if (scanBytes_.has_value()) {
-            auto scan = AddressScanner::ModuleSearch(moduleName, symbolName, scanBytes_.value());
-            if (scan.has_value()) {
-                auto& [moduleBase, sigAddress, offset] = scan.value();
-                warn("[AddressEntry] Warning: const access against non-updated entry (%s). consider calling entry::Update()", symbolName.c_str());
-                return sigAddress;
+            if (_ScanBytes.has_value()) {
+                if (auto scan = AddressScanner::ModuleSearch(ModuleName, SymbolName, _ScanBytes.value()); scan.has_value()) {
+                    auto& [moduleBase, sigAddress, offset] = scan.value();
+                    Warn("[AddressEntry] Warning: const access against non-updated entry (%s). consider calling entry::Update()", SymbolName.c_str());
+                    return sigAddress;
+                }
+                Error("[AddressEntry] Failed to lookup address by pattern scan for %s", SymbolName.c_str());
             }
-            else {
-                error("[AddressEntry] Failed to lookup address by pattern scan for %s", symbolName.c_str());
-            }
-        }
-        // Case 4: moduleName + offset
-        else
-        if (!moduleName.empty() && knownOffset.value_or(0) > 0) {
-            HMODULE hMod = GetModuleHandleW(moduleName.c_str());
-            if (!hMod) {
-                error("[AddressScanner] Module %ls not loaded yet.", moduleName.c_str());
-                return std::nullopt;
-            }
-            return (uintptr_t)hMod + knownOffset.value();
-        }
+            // Case 4: moduleName + offset
+            else
+                if (!ModuleName.empty() && KnownOffset.value_or(0) > 0) {
+                    HMODULE hMod = GetModuleHandleW(ModuleName.c_str());
+                    if (!hMod) {
+                        Error("[AddressScanner] Module %ls not loaded yet.", ModuleName.c_str());
+                        return std::nullopt;
+                    }
+                    return reinterpret_cast<uintptr_t>(hMod) + KnownOffset.value();
+                }
 
-        error("[AddressEntry] Complete failure to find address for symbol %s", symbolName.c_str());
+        Error("[AddressEntry] Complete failure to find address for symbol %s", SymbolName.c_str());
         return std::nullopt;
     }
 
     std::optional<uintptr_t> AddressEntry::GetAddress() {
-        if (targetAddress > 0)
-            return targetAddress;
-        else
-        // Case 1: module base + known offset
-        if (moduleAddress > 0 && knownOffset.value_or(0) > 0) {
-            SetKnownAddress(moduleAddress + knownOffset.value());
-            return targetAddress;
-        }
-        else {
-            // Case 2: exported symbol
-            // Case 3: pattern scan
-            // Case 4: moduleName + offset
-            auto result = Update();
-            if (result.has_value())
-                return result.value();
-        }
+        if (TargetAddress > 0)
+            return TargetAddress;
 
-        error("[AddressEntry] Complete failure to find address for symbol %s", symbolName.c_str());
+        // Case 1: module base + known offset
+        if (ModuleAddress > 0 && KnownOffset.value_or(0) > 0) {
+            SetKnownAddress(ModuleAddress + KnownOffset.value());
+            return TargetAddress;
+        }
+        // Case 2: exported symbol
+        // Case 3: pattern scan
+        // Case 4: moduleName + offset
+        if (auto result = Update(); result.has_value())
+            return result.value();
+
+        Error("[AddressEntry] Complete failure to find address for symbol %s", SymbolName.c_str());
         return std::nullopt;
     }
 
     // --- Debugging ---
     void AddressEntry::Dump() const {
-        debug("[AddressEntry] --- %s Dump ---", symbolName.c_str());
-        debug("[AddressEntry]  - Module Name   : %ls", moduleName.c_str());
-        debug("[AddressEntry]  - Module Base   : " ADDR_FMT, (moduleAddress));
-        debug("[AddressEntry]  - Offset        : 0x%llx", knownOffset.value_or(0));
-        debug("[AddressEntry]  - Final Address : " ADDR_FMT, GetAddress());
+        Debug("[AddressEntry] --- %s Dump ---", SymbolName.c_str());
+        Debug("[AddressEntry]  - Module Name   : %ls", ModuleName.c_str());
+        Debug("[AddressEntry]  - Module Base   : " ADDR_FMT, ModuleAddress);
+        Debug("[AddressEntry]  - Offset        : 0x%llx", KnownOffset.value_or(0));
+        Debug("[AddressEntry]  - Final Address : " ADDR_FMT, GetAddress());
     }
 
     bool AddressEntry::Verify() const
@@ -192,15 +175,14 @@ namespace ByteWeaver {
         uintptr_t newAddress{};
 
         // Case 1: module base + known offset
-        if (moduleAddress > 0 && knownOffset.value_or(0) > 0) {
-            uintptr_t newAddress = moduleAddress + knownOffset.value();
+        if (ModuleAddress > 0 && KnownOffset.value_or(0) > 0) {
+            return ModuleAddress + KnownOffset.value();
         }
         // Case 2: exported symbol
-        else
-        if (isSymbolExport) {
-            auto lookup = AddressScanner::LookupExportAddress(moduleName, symbolName);
+        if (IsSymbolExport) {
+            auto lookup = AddressScanner::LookupExportAddress(ModuleName, SymbolName);
             if (!lookup.has_value()) {
-                error("[AddressEntry] Failed to find exported address for %s!", symbolName.c_str());
+                Error("[AddressEntry] Failed to find exported address for %s!", SymbolName.c_str());
                 return false;
             }
             const auto& [moduleBase, signatureAddress, offset] = lookup.value();
@@ -209,24 +191,23 @@ namespace ByteWeaver {
 
         // Case 3: pattern scan
         else
-        if (scanBytes_.has_value()) {
-            auto search = AddressScanner::ModuleSearch(moduleName, symbolName, scanBytes_.value());
-            if (!search.has_value()) {
-                error("[AddressEntry] Failed to search module for pattern matching symbol %s!", symbolName.c_str());
-                return false;
+            if (_ScanBytes.has_value()) {
+                auto search = AddressScanner::ModuleSearch(ModuleName, SymbolName, _ScanBytes.value());
+                if (!search.has_value()) {
+                    Error("[AddressEntry] Failed to search module for pattern matching symbol %s!", SymbolName.c_str());
+                    return false;
+                }
+                const auto& [moduleBase, signatureAddress, offset] = search.value();
+                newAddress = signatureAddress;
             }
-            const auto& [moduleBase, signatureAddress, offset] = search.value();
-            newAddress = signatureAddress;
-        }
 
         if (newAddress) {
-            if (newAddress == targetAddress)
+            if (newAddress == TargetAddress)
                 return true;
-            else
-                return false;
+            return false;
         }
 
-        if (targetAddress)
+        if (TargetAddress)
             return true;
 
         return false;

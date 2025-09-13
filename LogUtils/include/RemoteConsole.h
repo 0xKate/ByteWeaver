@@ -4,16 +4,15 @@ namespace LogUtils
 {
     class RemoteConsole
     {
-    private:
-        static std::atomic_bool AutoReconnect;
-        static std::atomic_bool Enabled;
-        static HANDLE Pipe;
-        static const char* PipeName;
+        static std::atomic_bool _AutoReconnect;
+        static std::atomic_bool _Enabled;
+        static HANDLE _Pipe;
+        static const char* _PipeName;
     public:
         static bool Connect();
         static bool Reconnect();
         static bool IsConnected();
-        static void Disconnect(bool disableReconnect = true);
+        static void Disconnect();
         static void Write(const std::string& msg);
         static void SetAutoReconnect(bool enabled = true);
         static void SetEnabled(bool enabled = true);

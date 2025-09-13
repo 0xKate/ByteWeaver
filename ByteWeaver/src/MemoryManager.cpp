@@ -20,7 +20,7 @@ namespace ByteWeaver {
 
     void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch) {
         if (const auto it = Patches.find(key); it != Patches.end()) {
-            warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
+            Warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
             RestoreAndErasePatch(key);
         }
         Patches[key] = std::move(hPatch);
@@ -45,7 +45,7 @@ namespace ByteWeaver {
 
     void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour) {
         if (const auto it = Detours.find(key); it != Detours.end()) {
-            warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
+            Warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
             RestoreAndEraseDetour(key);
         }
         Detours[key] = std::move(hDetour);
@@ -70,7 +70,7 @@ namespace ByteWeaver {
 
     void MemoryManager::ApplyPatches() {
         for (auto& val : Patches | std::views::values) {
-            if (const std::shared_ptr<Patch>& patch = val; patch && patch->isEnabled) {
+            if (const std::shared_ptr<Patch>& patch = val; patch && patch->IsEnabled) {
                 patch->Apply();
             }
         }
@@ -78,7 +78,7 @@ namespace ByteWeaver {
 
     void MemoryManager::RestorePatches() {
         for (const auto& val : Patches | std::views::values) {
-            if (const std::shared_ptr<Patch> patch = val; patch && patch->isPatched) {
+            if (const std::shared_ptr<Patch> patch = val; patch && patch->IsPatched) {
                 patch->Restore();
             }
         }
@@ -119,28 +119,28 @@ namespace ByteWeaver {
     void MemoryManager::ApplyAll() {
         ApplyDetours();
         ApplyPatches();
-        debug("[MemoryManager] Applied all detours and enabled patches!");
+        Debug("[MemoryManager] Applied all detours and enabled patches!");
     }
 
     void MemoryManager::RestoreAll() {
         RestorePatches();
         RestoreDetours();
-        debug("[MemoryManager] Restored all detours and patches.");
+        Debug("[MemoryManager] Restored all detours and patches.");
     }
 
     bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
         const uintptr_t endAddress = address + length;
         for (const auto& [fst, snd] : Patches) {
-            if (const std::shared_ptr<Patch> patch = snd; patch->isPatched) {
-                if (const uintptr_t patchEnd = patch->targetAddress + patch->patchBytes.size(); address < patchEnd && endAddress > patch->targetAddress) {
+            if (const std::shared_ptr<Patch> patch = snd; patch->IsPatched) {
+                if (const uintptr_t patchEnd = patch->TargetAddress + patch->PatchBytes.size(); address < patchEnd && endAddress > patch->TargetAddress) {
                     detectedKeys->push_back(fst);
                 }
             }
         }
 
         for (const auto& [fst, snd] : Detours) {
-            if (const std::shared_ptr<Detour> detour = snd; detour->isPatched) {
-                if (const uintptr_t detourEnd = detour->targetAddress + sizeof(uintptr_t); address < detourEnd && endAddress > detour->targetAddress) {
+            if (const std::shared_ptr<Detour> detour = snd; detour->IsPatched) {
+                if (const uintptr_t detourEnd = detour->TargetAddress + sizeof(uintptr_t); address < detourEnd && endAddress > detour->TargetAddress) {
                     detectedKeys->push_back(fst);
                 }
             }
@@ -204,7 +204,7 @@ namespace ByteWeaver {
         }
         // ReSharper disable once CppDFAUnreachableCode
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            error("Exception caught: access violation while attempting to read address: %lld", address);
+            Error("Exception caught: access violation while attempting to read address: %lld", address);
             return NULL;
         }
     }
@@ -233,7 +233,7 @@ namespace ByteWeaver {
     uintptr_t MemoryManager::GetModuleBaseAddress(const wchar_t* moduleName)
     {
         if (HMODULE hMod = GetModuleHandleW(moduleName); !hMod) {
-            error("%s not loaded yet.", moduleName);
+            Error("%s not loaded yet.", moduleName);
             return 0;
         }
         else {
@@ -257,7 +257,7 @@ namespace ByteWeaver {
     {
         uintptr_t moduleBase = GetModuleBaseAddressFast(address);
         if (!moduleBase) {
-            error("[GetModuleBounds] Address " ADDR_FMT " is not inside a module!", address);
+            Error("[GetModuleBounds] Address " ADDR_FMT " is not inside a module!", address);
             return { 0,0 };
         }
 
@@ -319,11 +319,11 @@ namespace ByteWeaver {
             throw std::runtime_error("Failed to open file: " + outPath.string());
         }
 
-        outFile.write(buffer, static_cast<std::streamsize>(length));
+        outFile.write(buffer, length);
         outFile.close();
     }
 
-    void MemoryManager::WriteBufferToFile(uintptr_t address, size_t length, const fs::path& outPath) {
+    void MemoryManager::WriteBufferToFile(const uintptr_t address, const size_t length, const fs::path& outPath) {
         return WriteBufferToFile(reinterpret_cast<const char*>(address), length, outPath);
     }
 }

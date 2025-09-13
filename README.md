@@ -15,8 +15,6 @@
 <br/>
 
 ## 📦 Getting Started
-ByteWeaver is a static .lib ensure your build environment has it downloaded and located within an include directory.
-
 Simply add this to your CmakeLists.txt and replace `YOUR_PROJECT` with your build target.
 
 ~~~cmake
@@ -41,8 +39,6 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 #include <ByteWeaver.h>
 ~~~
 
-<br/>
-
 #### Logs and errors can be routed to your custom logger.
 ~~~cpp
 // ByteWeaver.h
@@ -52,5 +48,3 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 // If you have a logger
 	ByteWeaver::SetLogCallback(MyLogger::log);
 ~~~
-
-<br/>

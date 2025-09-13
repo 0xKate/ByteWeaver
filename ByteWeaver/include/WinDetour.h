@@ -6,11 +6,12 @@ namespace ByteWeaver {
 
     class Detour {
     public:
-        bool isEnabled;
-        bool isPatched;
-        uintptr_t targetAddress;
-        PVOID* originalFunction;
-        PVOID  detourFunction;
+        bool IsEnabled;
+        bool IsPatched;
+        uintptr_t TargetAddress;
+        PVOID* OriginalFunction;
+        PVOID  DetourFunction;
+        std::vector<uint8_t> OriginalBytes;
         Detour(uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction);
 
         bool Apply();

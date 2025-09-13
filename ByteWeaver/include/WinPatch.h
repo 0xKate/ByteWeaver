@@ -6,11 +6,11 @@ namespace ByteWeaver
 {
     class Patch {
     public:
-        bool isEnabled;
-        bool isPatched;
-        uintptr_t targetAddress;
-        std::vector<uint8_t> patchBytes;
-        std::vector<uint8_t> originalBytes;
+        bool IsEnabled;
+        bool IsPatched;
+        uintptr_t TargetAddress;
+        std::vector<uint8_t> PatchBytes;
+        std::vector<uint8_t> OriginalBytes;
 
         Patch(uintptr_t patchAddress, std::vector<uint8_t> patchBytes);
 

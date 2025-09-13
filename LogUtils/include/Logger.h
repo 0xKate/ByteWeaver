@@ -11,21 +11,21 @@ namespace LogUtils
 
     class Logger {
     public:
-        static void Initialize(std::filesystem::path log_path, LogLevel level);
-        static void setLogLevel(LogLevel level);
-        static void debug(const char* format, ...);
-        static void info(const char* format, ...);
-        static void warn(const char* format, ...);
-        static void error(const char* format, ...);
-        static void log(const std::string& message);
-        static void log(LogLevel level, const std::string& message);
+        static void Initialize(const std::filesystem::path& logPath, LogLevel level);
+        static void SetLogLevel(LogLevel level);
+        static void Debug(const char* format, ...);
+        static void Info(const char* format, ...);
+        static void Warn(const char* format, ...);
+        static void Error(const char* format, ...);
+        static void Log(const std::string& message);
+        static void Log(LogLevel level, const std::string& message);
 
 
     private:
-        static LogLevel logLevel;
-        static std::ofstream fileStream;
-        static std::mutex mutex;
-        static std::string formatArgs(const char* format, va_list args);
-        static std::string formatLogMessage(LogLevel level, const std::string& message);
+        static LogLevel _LogLevel;
+        static std::ofstream _FileStream;
+        static std::mutex _Mutex;
+        static std::string FormatArgs(const char* format, va_list args);
+        static std::string FormatLogMessage(LogLevel level, const std::string& message);
     };
 }

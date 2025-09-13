@@ -1,12 +1,7 @@
 #pragma once
 
-#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>  // For MAX_PATH and Windows API calls
-#else
-#include <climits>    // For PATH_MAX on Linux/Unix
-#include <unistd.h>   // For readlink and getpid
-#endif
 
 // STD Lib
 #include <string>

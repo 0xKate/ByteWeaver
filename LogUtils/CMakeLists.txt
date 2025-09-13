@@ -1,6 +1,5 @@
 # ---- ByteWeaver library ----
-add_library(LogUtils STATIC
-        include/Shared.h)
+add_library(LogUtils STATIC)
 
 target_sources(LogUtils PUBLIC
         "src/FileManager.cpp"

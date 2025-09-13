@@ -1,21 +1,21 @@
 #pragma once
 
-#include "Shared.h"
+#include "LogUtils.h"
 #include "RemoteConsole.h"
 #include "Logger.h"
 
 namespace LogUtils
 {
-    std::atomic_bool RemoteConsole::AutoReconnect = false;
-    std::atomic_bool RemoteConsole::Enabled = false;
+    std::atomic_bool RemoteConsole::_AutoReconnect = false;
+    std::atomic_bool RemoteConsole::_Enabled = false;
 
-    HANDLE RemoteConsole::Pipe = nullptr;
-    const char* RemoteConsole::PipeName = R"(\\.\pipe\ConsoleLoggerPipe)";
+    HANDLE RemoteConsole::_Pipe = nullptr;
+    const char* RemoteConsole::_PipeName = R"(\\.\pipe\ConsoleLoggerPipe)";
 
     bool RemoteConsole::Connect()
     {
-        HANDLE pipe = CreateFileA(
-            PipeName,              // Name of the named pipe
+        const HANDLE pipe = CreateFileA(
+            _PipeName,              // Name of the named pipe
             GENERIC_READ | GENERIC_WRITE,  // Access: you want to read and write
             0,                      // No sharing
             nullptr,                // Default security
@@ -25,12 +25,12 @@ namespace LogUtils
 
 
         if (pipe == INVALID_HANDLE_VALUE) {
-            Logger::error("[RCON] Unable to establish connection. Invalid pipe handle!");
+            Logger::Error("[RCON] Unable to establish connection. Invalid pipe handle!");
             return false;
         }
 
-        Pipe = pipe;
-        Enabled = true;
+        _Pipe = pipe;
+        _Enabled = true;
 
         return true;
     }
@@ -38,10 +38,10 @@ namespace LogUtils
     bool RemoteConsole::Reconnect()
     {
         {
-            if (!AutoReconnect)
+            if (!_AutoReconnect)
                 return false;
 
-            if (Pipe)
+            if (_Pipe)
                 return true;
         }
         return Connect();
@@ -49,83 +49,80 @@ namespace LogUtils
 
     bool RemoteConsole::IsConnected()
     {
-        if (!Pipe)
+        if (!_Pipe)
             return false;
 
         DWORD bytesAvailable = 0;
-        BOOL result = PeekNamedPipe(Pipe, nullptr, 0, nullptr, &bytesAvailable, nullptr);
-        if (result == FALSE)
+        if (const bool result = PeekNamedPipe(_Pipe, nullptr, 0, nullptr, &bytesAvailable, nullptr); result == FALSE)
         {
-            CloseHandle(Pipe);
-            Pipe = nullptr;
-            Enabled = FALSE;
-            AutoReconnect = FALSE;
-            Logger::error("[RCON] Pipe connection broken, disconnecting!");
+            CloseHandle(_Pipe);
+            _Pipe = nullptr;
+            _Enabled = FALSE;
+            _AutoReconnect = FALSE;
+            Logger::Error("[RCON] Pipe connection broken, disconnecting!");
             return false;
         }
 
         return true;
     }
 
-    void RemoteConsole::Disconnect(bool disableReconnect)
+    void RemoteConsole::Disconnect()
     {
-        if (Pipe)
+        if (_Pipe)
         {
-            CloseHandle(Pipe);
-            Pipe = nullptr;
+            CloseHandle(_Pipe);
+            _Pipe = nullptr;
         }
-        Enabled = false;
-        AutoReconnect = false;
+        _Enabled = false;
+        _AutoReconnect = false;
     }
 
     void RemoteConsole::Write(const std::string& msg)
     {
-        if (!Enabled) {
-            Logger::error("[RCON] Cannot write to console while disabled/disconnected!");
+        if (!_Enabled) {
+            Logger::Error("[RCON] Cannot write to console while disabled/disconnected!");
             return;
         }
 
-        if (!Pipe || Pipe == INVALID_HANDLE_VALUE) {
-            Enabled = false;
-            AutoReconnect = false;
-            Logger::error("[RCON] Cannot write to invalid pipe! Disconnecting!");
+        if (!_Pipe || _Pipe == INVALID_HANDLE_VALUE) {
+            _Enabled = false;
+            _AutoReconnect = false;
+            Logger::Error("[RCON] Cannot write to invalid pipe! Disconnecting!");
             return;
         }
 
         DWORD written;
-        BOOL success;
-        success = WriteFile(Pipe, msg.c_str(), (DWORD)msg.size(), &written, nullptr);
 
-        if (!success || written != msg.size())
+        if (const BOOL success = WriteFile(_Pipe, msg.c_str(), msg.size(), &written, nullptr); !success || written != msg.size())
         {
-            Enabled = false;
-            DWORD err = GetLastError();
-            Logger::error("[RCON] Failed to write to named pipe: %d", err);
+            _Enabled = false;
+            const DWORD err = GetLastError();
+            Logger::Error("[RCON] Failed to write to named pipe: %d", err);
 
-            CloseHandle(Pipe);
-            Pipe = nullptr;
+            CloseHandle(_Pipe);
+            _Pipe = nullptr;
         }
     }
 
-    void RemoteConsole::SetAutoReconnect(bool enabled)
+    void RemoteConsole::SetAutoReconnect(const bool enabled)
     {
-        AutoReconnect = enabled;
+        _AutoReconnect = enabled;
     }
 
-    void RemoteConsole::SetEnabled(bool enabled)
+    void RemoteConsole::SetEnabled(const bool enabled)
     {
-        Enabled = enabled;
+        _Enabled = enabled;
 
         if (!enabled) {
-            Logger::debug("[RCON] Console Logging Disabled!");
-            Disconnect(true); // safe here, it handles its own locking
+            Logger::Debug("[RCON] Console Logging Disabled!");
+            Disconnect(); // safe here, it handles its own locking
             return;
         }
-        Logger::debug("[RCON] Console Logging Enabled!");
+        Logger::Debug("[RCON] Console Logging Enabled!");
     }
 
     bool RemoteConsole::IsEnabled()
     {
-        return Enabled;
+        return _Enabled;
     }
 }

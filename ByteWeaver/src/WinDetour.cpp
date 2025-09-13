@@ -6,45 +6,54 @@
 
 namespace ByteWeaver
 {
-    Detour::Detour(uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction)
+    Detour::Detour(const uintptr_t targetAddress, PVOID* originalFunction, const PVOID detourFunction)
     {
-        this->targetAddress = targetAddress;
-        this->isPatched = false;
-        this->originalFunction = originalFunction;
-        this->detourFunction = detourFunction;
-        this->isEnabled = false;
+        this->TargetAddress = targetAddress;
+        this->IsPatched = false;
+        this->OriginalFunction = originalFunction;
+        this->DetourFunction = detourFunction;
+        this->IsEnabled = false;
+
+        if constexpr (WIN64) {
+            this->OriginalBytes.resize(14);
+            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), 14);
+        }
+        else {
+            this->OriginalBytes.resize(5);
+            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), 5);
+        }
     }
 
     bool Detour::Apply()
     {
-        if (isPatched)
+        if (IsPatched)
             return true;
 
         __try
         {
             DetourTransactionBegin();
             DetourUpdateThread(GetCurrentThread());
-            DetourAttach(originalFunction, detourFunction);
+            DetourAttach(OriginalFunction, DetourFunction);
 
             PVOID* failedPointer = nullptr;
             if (const LONG result = DetourTransactionCommitEx(&failedPointer); result == NO_ERROR) {
                 if constexpr (ENABLE_DETOUR_LOGGING)
-                    debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]", reinterpret_cast<void*>(targetAddress), detourFunction);
-                isPatched = true;
+                    Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]", reinterpret_cast<void*>(TargetAddress), DetourFunction);
+                IsPatched = true;
 
-                if (Is64Bit)
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 14);
+                if constexpr (WIN64)
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 14);
                 else
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 5);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 5);
 
                 return true;
             }
             const char* failMsg = failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
-            error("[Detour] Failed to apply! : %s", failMsg);
+            Error("[Detour] Failed to apply! : %s", failMsg);
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             const DWORD code = GetExceptionCode();
-            error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
+            Error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
         }
         DetourTransactionAbort();
         return false;
@@ -52,38 +61,37 @@ namespace ByteWeaver
 
     bool Detour::Restore()
     {
-        if (!isPatched)
+        if (!IsPatched)
             return true;
 
         __try
         {
             DetourTransactionBegin();
             DetourUpdateThread(GetCurrentThread());
-            DetourDetach(originalFunction, detourFunction);
+            DetourDetach(OriginalFunction, DetourFunction);
 
             PVOID* failedPointer = nullptr;
-            LONG result = DetourTransactionCommitEx(&failedPointer);
-            if (result == NO_ERROR) {
-                isPatched = false;
+            if (const long result = DetourTransactionCommitEx(&failedPointer); result == NO_ERROR) {
+                IsPatched = false;
 
                 if constexpr (ENABLE_DETOUR_LOGGING)
-                    debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Original: " ADDR_FMT "]", reinterpret_cast<void*>(targetAddress), originalFunction);
+                    Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Original: " ADDR_FMT "]", reinterpret_cast<void*>(TargetAddress), OriginalFunction);
 
-                if (Is64Bit)
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 14);
+                if constexpr (WIN64)
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 14);
                 else
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddress), 5);
+                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 5);
 
                 return true;
             }
             else {
-                const char* failMsg = (failedPointer && *failedPointer) ? static_cast<const char*>(*failedPointer) : "Unknown";
-                error("[Detour] Failed to restore! Error: %ld, Msg: %s", result, failMsg);
+                const char* failMsg = failedPointer && *failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
+                Error("[Detour] Failed to restore! Error: %ld, Msg: %s", result, failMsg);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            DWORD code = GetExceptionCode();
-            error("[Detour] Exception occurred during Restore. Code: 0x%08X", code);
+            const unsigned long code = GetExceptionCode();
+            Error("[Detour] Exception occurred during Restore. Code: 0x%08X", code);
         }
         DetourTransactionAbort();
         return false;
@@ -92,19 +100,19 @@ namespace ByteWeaver
 
     bool Detour::Enable()
     {
-        if (this->isEnabled)
+        if (this->IsEnabled)
             return false;
 
-        this->isEnabled = true;
+        this->IsEnabled = true;
         return this->Apply();
     }
 
     bool Detour::Disable()
     {
-        if (!this->isEnabled)
+        if (!this->IsEnabled)
             return false;
 
-        this->isEnabled = false;
+        this->IsEnabled = false;
         return this->Restore();
     }
 }

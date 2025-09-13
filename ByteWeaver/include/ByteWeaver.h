@@ -36,34 +36,33 @@
     applicable laws and to use it only in ethical and lawful ways.
 */
 
+// ReSharper disable file CppUnusedIncludeDirective
+
 #pragma once
 
-#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>  // For MAX_PATH and Windows API calls
-#else
-#include <climits>    // For PATH_MAX on Linux/Unix
-#include <unistd.h>   // For readlink and getpid
-#endif
+#include <Windows.h>
 
 // STD Lib
-#include <string>
-#include <filesystem>
-#include <vector>
-#include <cstdint>
-#include <optional>
-#include <mutex>
-#include <shared_mutex>
-#include <map>
-#include <iostream>
-#include <thread>
-#include <sstream>
-#include <fstream>
-#include <cstdarg>
-#include <cstdio>
-#include <unordered_map>
-#include <utility> 
+
 #include <array>
+#include <cstdarg>
+#include <cstdint>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+#include <map>
+#include <mutex>
+#include <optional>
+#include <shared_mutex>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #ifndef BYTEWEAVER_ENABLE_LOGGING
   #ifndef NDEBUG
@@ -77,25 +76,25 @@
 
 #if defined(_WIN64)
     #ifndef ADDR_FMT
-    #define ADDR_FMT "0x%016llx"
-    #endif // ADDR_FMT
+        #define ADDR_FMT "0x%016llx"
+    #endif
 #else
     #ifndef ADDR_FMT
-    #define ADDR_FMT "0x%08x"
-    #endif // ADDR_FMT
+        #define ADDR_FMT "0x%08x"
+    #endif
 #endif
 
 namespace ByteWeaver {
 
     namespace fs = std::filesystem;
 
-    #if defined(_M_X64)
-    constexpr bool Is64Bit = true;
-    #elif defined(_M_IX86)
-    constexpr bool Is64Bit = false;
-    #else
+#if defined(_WIN64)
+    constexpr bool WIN64 = true;
+#elif defined(_M_IX86)
+    constexpr bool WIN64 = false;
+#else
     #error "Unknown architecture"
-    #endif
+#endif
 
 #if defined(BYTEWEAVER_ENABLE_LOGGING) && BYTEWEAVER_ENABLE_LOGGING
     constexpr bool ENABLE_DETOUR_LOGGING = true;
@@ -105,15 +104,14 @@ namespace ByteWeaver {
     constexpr bool ENABLE_PATCH_LOGGING  = false;
 #endif
 
-
     // Signature expected for custom loggers
     using LogFunction = void(*)(int level, const char* msg);
 
     // Install a custom logger from the outside
     void SetLogCallback(LogFunction fn);
 
-    void debug(const char* fmt, ...);
-    void info(const char* fmt, ...);
-    void warn(const char* fmt, ...);
-    void error(const char* fmt, ...);
+    void Debug(const char* fmt, ...);
+    void Info(const char* fmt, ...);
+    void Warn(const char* fmt, ...);
+    void Error(const char* fmt, ...);
 }

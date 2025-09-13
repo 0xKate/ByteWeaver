@@ -9,11 +9,11 @@ namespace LogUtils
 		static fs::path LuaHomePath;  // Path to /WEHTool/Lua
 
 		static std::string GetProcessPath();
-		static int64_t GetCurrentPID();
-		static void Initialize(std::string project_dir);
+		static int64_t GetCurrentPid();
+		static void Initialize(const std::string& projectDir);
 		static void DumpPaths();
 		static std::string ReadFile(const fs::path& path);
-		static bool WriteFile(std::string filePath, std::string data, bool append = false);
+		static bool WriteFile(const std::string& filePath, const std::string& data, bool append = false);
 	};
 }
 

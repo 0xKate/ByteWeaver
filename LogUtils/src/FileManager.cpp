@@ -1,5 +1,5 @@
 
-#include "Shared.h"
+#include "LogUtils.h"
 #include "FileManager.h"
 #include "Logger.h"
 
@@ -29,10 +29,10 @@ std::string FileManager::GetProcessPath()
     return {result};
 }
 
-int64_t FileManager::GetCurrentPID()
+int64_t FileManager::GetCurrentPid()
 {
 #ifdef _WIN32
-    return static_cast<int64_t>(GetCurrentProcessId());
+    return GetCurrentProcessId();
 #else
     return static_cast<int64_t>(getpid());
 #endif
@@ -40,18 +40,18 @@ int64_t FileManager::GetCurrentPID()
 
 void FileManager::DumpPaths()
 {
-    Logger::info("BasePath: %s\nWEHPath: %s\nLuaPath: %s\n",
+    Logger::Info("BasePath: %s\nWEHPath: %s\nLuaPath: %s\n",
         ProcessPath.string().c_str(),
         ProjectPath.string().c_str(),
         LuaHomePath.string().c_str());
 }
 
-void FileManager::Initialize(std::string project_dir)
+void FileManager::Initialize(const std::string& projectDir)
 {
-    fs::path processPath(GetProcessPath());
+    const fs::path processPath(GetProcessPath());
 
     ProcessPath = processPath.parent_path();
-    ProjectPath = ProcessPath / project_dir;
+    ProjectPath = ProcessPath / projectDir;
     LuaHomePath = ProjectPath / "Lua";
 
     try {
@@ -60,7 +60,7 @@ void FileManager::Initialize(std::string project_dir)
         fs::create_directories(LuaHomePath);
     }
     catch (const fs::filesystem_error& e) {
-        Logger::error("[FileManager]: %s", e.what());
+        Logger::Error("[FileManager]: %s", e.what());
     }
 }
 
@@ -70,22 +70,21 @@ std::string FileManager::ReadFile(const fs::path& path)
     if (!file)
         return {};
 
-    return std::string((std::istreambuf_iterator<char>(file)),
+    return std::string(std::istreambuf_iterator(file),
         std::istreambuf_iterator<char>());
 }
 
-bool FileManager::WriteFile(const std::string filePath, const std::string data, bool append)
+bool FileManager::WriteFile(const std::string& filePath, const std::string& data, const bool append)
 {
     try {
         // Ensure that the parent directory exists
-        fs::path pathObj(filePath);
+        const fs::path pathObj(filePath);
         if (!pathObj.has_parent_path()) {
-            Logger::error("Invalid file path, no parent path found.");
+            Logger::Error("Invalid file path, no parent path found.");
             return false;
         }
 
-        fs::path parentDir = pathObj.parent_path();
-        if (!fs::exists(parentDir)) {
+        if (const fs::path parentDir = pathObj.parent_path(); !fs::exists(parentDir)) {
             fs::create_directories(parentDir);  // Create the directory structure if it doesn't exist
         }
 

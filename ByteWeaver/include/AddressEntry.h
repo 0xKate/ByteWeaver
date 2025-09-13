@@ -8,23 +8,23 @@ namespace ByteWeaver {
     class AddressEntry {
     public:
         // Required identity
-        const std::string  symbolName;
-        const std::wstring moduleName;
+        const std::string  SymbolName;
+        const std::wstring ModuleName;
 
         // Optional ways to resolve the address
-        bool isSymbolExport = true;
-        std::optional<uintptr_t> knownOffset;
-        std::optional<std::string> scanPattern;
+        bool IsSymbolExport = true;
+        std::optional<uintptr_t> KnownOffset;
+        std::optional<std::string> ScanPattern;
 
         // Resolved data
-        uintptr_t moduleAddress = 0x0;
-        uintptr_t targetAddress = 0x0;
+        uintptr_t ModuleAddress = 0x0;
+        uintptr_t TargetAddress = 0x0;
 
         // --- Constructors ---
         AddressEntry(std::string symbolName, std::wstring moduleName);
         static AddressEntry WithKnownAddress(std::string symbolName, std::wstring moduleName, uintptr_t address);
         static AddressEntry WithKnownOffset(std::string symbolName, std::wstring moduleName, uintptr_t offset);
-        static AddressEntry WithScanPattern(std::string symbolName, std::wstring moduleName, std::string pattern);
+        static AddressEntry WithScanPattern(std::string symbolName, std::wstring moduleName, const std::string& pattern);
 
         // --- Setters ---
         void SetModuleBase(uintptr_t moduleAddress);
@@ -44,7 +44,7 @@ namespace ByteWeaver {
 
     private:
         // Cached parsed scan bytes
-        std::optional<std::vector<std::optional<uint8_t>>> scanBytes_;
+        std::optional<std::vector<std::optional<uint8_t>>> _ScanBytes;
     };
 
 }

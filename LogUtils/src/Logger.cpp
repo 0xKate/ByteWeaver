@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Shared.h"
+#include "LogUtils.h"
 #include "Logger.h"
 #include "RemoteConsole.h"
 
@@ -9,83 +9,83 @@
 
 namespace LogUtils
 {
-    std::filesystem::path logLocation;
-    LogLevel Logger::logLevel = LogLevel::LOG_INFO;
-    std::ofstream Logger::fileStream;
-    std::mutex Logger::mutex;
+    std::filesystem::path LogLocation;
+    LogLevel Logger::_LogLevel = LogLevel::LOG_INFO;
+    std::ofstream Logger::_FileStream;
+    std::mutex Logger::_Mutex;
 
-    void Logger::Initialize(std::filesystem::path log_path, LogLevel level) {
-        std::lock_guard<std::mutex> lock(mutex);
-        logLocation = log_path;
-        logLevel = level;
-        fileStream.open(log_path, std::ios::app);
-        if (!fileStream.is_open()) {
+    void Logger::Initialize(const std::filesystem::path& logPath, const LogLevel level) {
+        std::lock_guard lock(_Mutex);
+        LogLocation = logPath;
+        _LogLevel = level;
+        _FileStream.open(logPath, std::ios::app);
+        if (!_FileStream.is_open()) {
             throw std::runtime_error("Unable to open log file.");
         }
     }
 
-    void Logger::setLogLevel(LogLevel level) {
-        std::lock_guard<std::mutex> lock(mutex);
-        logLevel = level;
+    void Logger::SetLogLevel(const LogLevel level) {
+        std::lock_guard lock(_Mutex);
+        _LogLevel = level;
     }
 
-    void Logger::debug(const char* format, ...) {
-        std::lock_guard<std::mutex> lock(mutex);
+    void Logger::Debug(const char* format, ...) {
+        std::lock_guard lock(_Mutex);
         va_list args;
         va_start(args, format);
-        std::string message = formatArgs(format, args);
+        const std::string message = FormatArgs(format, args);
         va_end(args);
-        log(LogLevel::LOG_DEBUG, message);
+        Log(LogLevel::LOG_DEBUG, message);
     }
 
-    void Logger::info(const char* format, ...) {
-        std::lock_guard<std::mutex> lock(mutex);
+    void Logger::Info(const char* format, ...) {
+        std::lock_guard lock(_Mutex);
         va_list args;
         va_start(args, format);
-        std::string message = formatArgs(format, args);
+        const std::string message = FormatArgs(format, args);
         va_end(args);
-        log(LogLevel::LOG_INFO, message);
+        Log(LogLevel::LOG_INFO, message);
     }
 
-    void Logger::warn(const char* format, ...) {
-        std::lock_guard<std::mutex> lock(mutex);
+    void Logger::Warn(const char* format, ...) {
+        std::lock_guard lock(_Mutex);
         va_list args;
         va_start(args, format);
-        std::string message = formatArgs(format, args);
+        const std::string message = FormatArgs(format, args);
         va_end(args);
-        log(LogLevel::LOG_WARN, message);
+        Log(LogLevel::LOG_WARN, message);
     }
 
-    void Logger::error(const char* format, ...) {
-        std::lock_guard<std::mutex> lock(mutex);
+    void Logger::Error(const char* format, ...) {
+        std::lock_guard lock(_Mutex);
         va_list args;
         va_start(args, format);
-        std::string message = formatArgs(format, args);
+        const std::string message = FormatArgs(format, args);
         va_end(args);
-        log(LogLevel::LOG_ERROR, message);
+        Log(LogLevel::LOG_ERROR, message);
     }
 
-    std::string Logger::formatArgs(const char* format, va_list args) {
+    std::string Logger::FormatArgs(const char* format, const va_list args) {
         char buffer[8096];
         vsnprintf(buffer, sizeof(buffer), format, args);
         return std::string(buffer);
     }
 
-    void Logger::log(const std::string& message)
+    void Logger::Log(const std::string& message)
     {
-        std::lock_guard<std::mutex> lock(mutex);
+        std::lock_guard lock(_Mutex);
 
         if (RemoteConsole::IsEnabled())
             RemoteConsole::Write(message + "\n");
 
-        if (fileStream.is_open()) {
-            fileStream << message << std::endl;
+        if (_FileStream.is_open()) {
+            _FileStream << message << std::endl;
         }
         std::cout << message << std::endl;
     }
 
-    void Logger::log(LogLevel level, const std::string& message) {
-        auto msg = formatLogMessage(level, message);
+    void Logger::Log(const LogLevel level, const std::string& message) {
+        auto msg = FormatLogMessage(level, message);
 
     #ifdef LOGGER_ENABLE_THREAD_DEBUG
         std::ostringstream oss;
@@ -123,19 +123,19 @@ namespace LogUtils
         msg.insert(0, timestampStr);
     #endif
 
-        if (fileStream.is_open()) {
-            fileStream << msg << std::endl;
+        if (_FileStream.is_open()) {
+            _FileStream << msg << std::endl;
         }
 
         if (RemoteConsole::IsEnabled())
         {
-            if (logLevel <= level) {
+            if (_LogLevel <= level) {
                 RemoteConsole::Write(msg + "\n");
             }
         }
         else
         {
-            if (logLevel <= level) {
+            if (_LogLevel <= level) {
                 if (level > LogLevel::LOG_INFO) {
                         std::cerr << msg << std::endl;
                 }
@@ -146,7 +146,7 @@ namespace LogUtils
         }
     }
 
-    std::string Logger::formatLogMessage(LogLevel level, const std::string& message) {
+    std::string Logger::FormatLogMessage(const LogLevel level, const std::string& message) {
         std::string levelStr;
         switch (level) {
         case LogLevel::LOG_DEBUG: levelStr = "DEBUG"; break;
