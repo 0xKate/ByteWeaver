@@ -128,6 +128,11 @@ namespace ByteWeaver {
         Debug("[MemoryManager] Restored all detours and patches.");
     }
 
+    void MemoryManager::ClearAll() {
+        Patches.clear();
+        Detours.clear();
+    }
+
     bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
         const uintptr_t endAddress = address + length;
         for (const auto& [fst, snd] : Patches) {
@@ -247,6 +252,7 @@ namespace ByteWeaver {
             return reinterpret_cast<uintptr_t>(moduleBase);
         return 0;
     }
+
     uintptr_t MemoryManager::GetModuleBaseAddressFast(const uintptr_t address)
     {
         return GetModuleBaseAddressFast(reinterpret_cast<void*>(address));
@@ -293,7 +299,6 @@ namespace ByteWeaver {
     }
 #endif
 
-
     fs::path MemoryManager::ReadWindowsPath(const char* address) {
         std::string safe(address);
 
@@ -312,6 +317,10 @@ namespace ByteWeaver {
         return ReadWindowsPath(reinterpret_cast<const char*>(address));
     }
 
+    void MemoryManager::WriteBufferToFile(const uintptr_t address, const size_t length, const fs::path& outPath) {
+        return WriteBufferToFile(reinterpret_cast<const char*>(address), length, outPath);
+    }
+
     void MemoryManager::WriteBufferToFile(const char* buffer, const size_t length, const fs::path& outPath) {
         std::ofstream outFile(outPath, std::ios::binary);
         if (!outFile) {
@@ -322,7 +331,27 @@ namespace ByteWeaver {
         outFile.close();
     }
 
-    void MemoryManager::WriteBufferToFile(const uintptr_t address, const size_t length, const fs::path& outPath) {
-        return WriteBufferToFile(reinterpret_cast<const char*>(address), length, outPath);
+    std::vector<uint8_t> MemoryManager::ReadBytesSafe(const uintptr_t address, const size_t size) {
+        if (!address || !size)
+            return {};
+
+        if (!IsMemoryRangeValid(address, size))
+            return {};
+
+        std::vector<uint8_t> buffer(size);
+        std::memcpy(buffer.data(), reinterpret_cast<const void*>(address), size);
+        return buffer;
     }
+
+    std::string MemoryManager::BytesToHex(const std::vector<uint8_t>& data) {
+        if (data.empty()) return "";
+
+        std::ostringstream oss;
+        oss << std::hex << std::setfill('0');
+        for (uint8_t b : data) {
+            oss << std::setw(2) << static_cast<unsigned>(b);
+        }
+        return oss.str();
+    }
+
 }

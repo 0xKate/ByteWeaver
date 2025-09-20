@@ -35,6 +35,7 @@ namespace ByteWeaver {
 
 		static void ApplyAll();
 		static void RestoreAll();
+		static void ClearAll();
 
 		static bool IsLocationModified(uintptr_t address, size_t length, std::vector<std::string>* detectedKeys);
 		static bool IsAddressValid(uintptr_t address);
@@ -58,6 +59,9 @@ namespace ByteWeaver {
 		static fs::path ReadWindowsPath(uintptr_t address);
 		static void WriteBufferToFile(uintptr_t address, size_t length, const fs::path& outPath);
 		static void WriteBufferToFile(const char* buffer, size_t length, const fs::path& outPath);
+
+		static std::vector<uint8_t> ReadBytesSafe(uintptr_t address, size_t size);
+		static std::string BytesToHex(const std::vector<uint8_t>& data);
 
 		template<typename T>
 		static T Read(uintptr_t address) {
