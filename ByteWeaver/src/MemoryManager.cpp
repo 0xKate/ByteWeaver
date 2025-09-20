@@ -140,7 +140,7 @@ namespace ByteWeaver {
 
         for (const auto& [fst, snd] : Detours) {
             if (const std::shared_ptr<Detour> detour = snd; detour->IsPatched) {
-                if (const uintptr_t detourEnd = detour->TargetAddress + sizeof(uintptr_t); address < detourEnd && endAddress > detour->TargetAddress) {
+                if (const uintptr_t detourEnd = detour->TargetAddress + detour->Size; address < detourEnd && endAddress > detour->TargetAddress) {
                     detectedKeys->push_back(fst);
                 }
             }
@@ -202,7 +202,6 @@ namespace ByteWeaver {
         __try {
             return *reinterpret_cast<uintptr_t*>(address);
         }
-        // ReSharper disable once CppDFAUnreachableCode
         __except (EXCEPTION_EXECUTE_HANDLER) {
             Error("Exception caught: access violation while attempting to read address: %lld", address);
             return NULL;

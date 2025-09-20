@@ -6,22 +6,16 @@
 
 namespace ByteWeaver
 {
-    Detour::Detour(const uintptr_t targetAddress, PVOID* originalFunction, const PVOID detourFunction)
+    Detour::Detour(const uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction)
     {
         this->TargetAddress = targetAddress;
         this->IsPatched = false;
         this->OriginalFunction = originalFunction;
         this->DetourFunction = detourFunction;
         this->IsEnabled = false;
-
-        if constexpr (WIN64) {
-            this->OriginalBytes.resize(14);
-            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), 14);
-        }
-        else {
-            this->OriginalBytes.resize(5);
-            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), 5);
-        }
+        this->Size = WIN64 ? 14 : 5;
+        this->OriginalBytes.resize(this->Size);
+        memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), this->Size);
     }
 
     bool Detour::Apply()
@@ -29,9 +23,9 @@ namespace ByteWeaver
         if (IsPatched)
             return true;
 
-        __try
-        {
-            DetourTransactionBegin();
+        DetourTransactionBegin();
+
+        __try {
             DetourUpdateThread(GetCurrentThread());
             DetourAttach(OriginalFunction, DetourFunction);
 
@@ -41,10 +35,7 @@ namespace ByteWeaver
                     Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]", reinterpret_cast<void*>(TargetAddress), DetourFunction);
                 IsPatched = true;
 
-                if constexpr (WIN64)
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 14);
-                else
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 5);
+                FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), this->Size);
 
                 return true;
             }
@@ -55,7 +46,9 @@ namespace ByteWeaver
             const DWORD code = GetExceptionCode();
             Error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
         }
+
         DetourTransactionAbort();
+
         return false;
     }
 
@@ -64,9 +57,9 @@ namespace ByteWeaver
         if (!IsPatched)
             return true;
 
-        __try
-        {
-            DetourTransactionBegin();
+        DetourTransactionBegin();
+
+        __try {
             DetourUpdateThread(GetCurrentThread());
             DetourDetach(OriginalFunction, DetourFunction);
 
@@ -77,10 +70,7 @@ namespace ByteWeaver
                 if constexpr (ENABLE_DETOUR_LOGGING)
                     Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Original: " ADDR_FMT "]", reinterpret_cast<void*>(TargetAddress), OriginalFunction);
 
-                if constexpr (WIN64)
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 14);
-                else
-                    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), 5);
+                FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(TargetAddress), this->Size);
 
                 return true;
             }
@@ -93,7 +83,9 @@ namespace ByteWeaver
             const unsigned long code = GetExceptionCode();
             Error("[Detour] Exception occurred during Restore. Code: 0x%08X", code);
         }
+
         DetourTransactionAbort();
+
         return false;
     }
 

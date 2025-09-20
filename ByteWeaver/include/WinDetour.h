@@ -12,6 +12,7 @@ namespace ByteWeaver {
         PVOID* OriginalFunction;
         PVOID  DetourFunction;
         std::vector<uint8_t> OriginalBytes;
+        size_t Size;
         Detour(uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction);
 
         bool Apply();
