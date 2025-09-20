@@ -12,6 +12,8 @@ namespace ByteWeaver {
 		static std::map<std::string, std::shared_ptr<Patch>> Patches;
 		static std::map<std::string, std::shared_ptr<Detour>> Detours;
 
+		static std::shared_mutex PatchesMutex;
+		static std::shared_mutex DetoursMutex;
 		static uintptr_t GetBaseAddress();
 
 		static void AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch);

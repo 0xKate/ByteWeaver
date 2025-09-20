@@ -8,130 +8,206 @@
 #include "WinPatch.h"
 #include "WinDetour.h"
 
+#include <map>
+#include <string>
+#include <memory>
+#include <shared_mutex>
+#include <mutex>
+#include <vector>
 
 namespace ByteWeaver {
-    std::map<std::string, std::shared_ptr<Patch>> MemoryManager::Patches;
-    std::map<std::string, std::shared_ptr<Detour>> MemoryManager::Detours;
 
-    uintptr_t MemoryManager::GetBaseAddress() {
-        HMODULE hModule = GetModuleHandle(nullptr);
-        return reinterpret_cast<uintptr_t>(hModule);
-    }
+// static member definitions
+std::map<std::string, std::shared_ptr<Patch>> MemoryManager::Patches;
+std::map<std::string, std::shared_ptr<Detour>> MemoryManager::Detours;
 
-    void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch) {
+std::shared_mutex MemoryManager::PatchesMutex;
+std::shared_mutex MemoryManager::DetoursMutex;
+
+uintptr_t MemoryManager::GetBaseAddress() {
+    HMODULE hModule = GetModuleHandle(nullptr);
+    return reinterpret_cast<uintptr_t>(hModule);
+}
+
+void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch) {
+    // Move out existing and insert new while holding mutex; call Restore on old after unlocking.
+    std::shared_ptr<Patch> old;
+    {
+        std::unique_lock lock(PatchesMutex);
         if (const auto it = Patches.find(key); it != Patches.end()) {
             Warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
-            RestoreAndErasePatch(key);
+            old = it->second;               // keep old to restore after unlock
+            Patches.erase(it);
         }
-        Patches[key] = std::move(hPatch);
-    }
+        Patches.emplace(key, std::move(hPatch));
+    } // unlock
+    if (old) old->Restore();
+}
 
-    void MemoryManager::AddPatch(const std::string& key, Patch* hPatch) {
-        AddPatch(key, std::shared_ptr<Patch>(hPatch));
-    }
+void MemoryManager::AddPatch(const std::string& key, Patch* hPatch) {
+    AddPatch(key, std::shared_ptr<Patch>(hPatch));
+}
 
-    void MemoryManager::ErasePatch(const std::string& key) {
+void MemoryManager::ErasePatch(const std::string& key) {
+    std::unique_lock lock(PatchesMutex);
+    if (const auto it = Patches.find(key); it != Patches.end()) {
+        Patches.erase(it);
+    }
+}
+
+void MemoryManager::RestoreAndErasePatch(const std::string& key) {
+    // Move out the object while holding lock, erase, then call Restore() outside lock.
+    std::shared_ptr<Patch> toRestore;
+    {
+        std::unique_lock lock(PatchesMutex);
         if (const auto it = Patches.find(key); it != Patches.end()) {
+            toRestore = it->second;
             Patches.erase(it);
         }
     }
+    if (toRestore) toRestore->Restore();
+}
 
-    void MemoryManager::RestoreAndErasePatch(const std::string& key) {
-        if (const auto it = Patches.find(key); it != Patches.end()) {
-            it->second->Restore();
-            Patches.erase(it);
-        }
-    }
-
-    void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour) {
+void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour) {
+    std::shared_ptr<Detour> old;
+    {
+        std::unique_lock lock(DetoursMutex);
         if (const auto it = Detours.find(key); it != Detours.end()) {
             Warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
-            RestoreAndEraseDetour(key);
+            old = it->second;
+            Detours.erase(it);
         }
-        Detours[key] = std::move(hDetour);
+        Detours.emplace(key, std::move(hDetour));
     }
+    if (old) old->Restore();
+}
 
-    void MemoryManager::AddDetour(const std::string& key, Detour* hDetour) {
-        AddDetour(key, std::shared_ptr<Detour>(hDetour));
+void MemoryManager::AddDetour(const std::string& key, Detour* hDetour) {
+    AddDetour(key, std::shared_ptr<Detour>(hDetour));
+}
+
+void MemoryManager::EraseDetour(const std::string& key) {
+    std::unique_lock lock(DetoursMutex);
+    if (const auto it = Detours.find(key); it != Detours.end()) {
+        Detours.erase(it);
     }
+}
 
-    void MemoryManager::EraseDetour(const std::string& key) {
+void MemoryManager::RestoreAndEraseDetour(const std::string& key) {
+    std::shared_ptr<Detour> toRestore;
+    {
+        std::unique_lock lock(DetoursMutex);
         if (const auto it = Detours.find(key); it != Detours.end()) {
+            toRestore = it->second;
             Detours.erase(it);
         }
     }
+    if (toRestore) toRestore->Restore();
+}
 
-    void MemoryManager::RestoreAndEraseDetour(const std::string& key) {
-        if (const auto it = Detours.find(key); it != Detours.end()) {
-            it->second->Restore();
-            Detours.erase(it);
-        }
-    }
-
-    void MemoryManager::ApplyPatches() {
-        for (auto& val : Patches | std::views::values) {
-            if (const std::shared_ptr<Patch>& patch = val; patch && patch->IsEnabled) {
-                patch->Apply();
-            }
-        }
-    }
-
-    void MemoryManager::RestorePatches() {
+void MemoryManager::ApplyPatches() {
+    // copy pointers to call Apply() outside lock
+    std::vector<std::shared_ptr<Patch>> toApply;
+    {
+        std::shared_lock lock(PatchesMutex);
+        toApply.reserve(Patches.size());
         for (const auto& val : Patches | std::views::values) {
-            if (const std::shared_ptr<Patch> patch = val; patch && patch->IsPatched) {
-                patch->Restore();
-            }
+            if (auto const& ptr = val; ptr && ptr->IsEnabled) toApply.push_back(ptr);
+        }
+    } // unlock
+    for (auto& p : toApply) if (p) p->Apply();
+}
+
+void MemoryManager::RestorePatches() {
+    std::vector<std::shared_ptr<Patch>> toRestore;
+    {
+        std::shared_lock lock(PatchesMutex);
+        toRestore.reserve(Patches.size());
+        for (const auto& val : Patches | std::views::values) {
+            if (auto const& ptr = val; ptr && ptr->IsPatched) toRestore.push_back(ptr);
         }
     }
+    for (auto& p : toRestore) if (p) p->Restore();
+}
 
-    void MemoryManager::ApplyDetours() {
+void MemoryManager::ApplyDetours() {
+    std::vector<std::shared_ptr<Detour>> toApply;
+    {
+        std::shared_lock lock(DetoursMutex);
+        toApply.reserve(Detours.size());
         for (const auto& val : Detours | std::views::values) {
-            if (std::shared_ptr<Detour> detour = val; detour != nullptr) {
-                detour->Apply();
-            }
+            if (auto const& ptr = val) toApply.push_back(ptr);
         }
     }
+    for (auto& d : toApply) if (d) d->Apply();
+}
 
-    void MemoryManager::RestoreDetours() {
+void MemoryManager::RestoreDetours() {
+    std::vector<std::shared_ptr<Detour>> toRestore;
+    {
+        std::shared_lock lock(DetoursMutex);
+        toRestore.reserve(Detours.size());
         for (const auto& val : Detours | std::views::values) {
-            if (std::shared_ptr<Detour> detour = val; detour != nullptr) {
-                detour->Restore();
-            }
+            if (auto const& ptr = val) toRestore.push_back(ptr);
         }
     }
+    for (auto& d : toRestore) if (d) d->Restore();
+}
 
-    void MemoryManager::ApplyByKey(const std::string& key) {
-        if (const auto itDetour = Detours.find(key); itDetour != Detours.end())
-            itDetour->second->Apply();
-
-        if (const auto itPatch = Patches.find(key); itPatch != Patches.end())
-            itPatch->second->Apply();
+void MemoryManager::ApplyByKey(const std::string& key) {
+    // Always lock PatchesMutex then DetoursMutex to preserve ordering and avoid deadlocks.
+    std::shared_ptr<Patch> sp;
+    std::shared_ptr<Detour> sd;
+    {
+        std::shared_lock lockP(PatchesMutex);
+        if (const auto itP = Patches.find(key); itP != Patches.end()) sp = itP->second;
+    }
+    {
+        std::shared_lock lockD(DetoursMutex);
+        if (const auto itD = Detours.find(key); itD != Detours.end()) sd = itD->second;
     }
 
-    void MemoryManager::RestoreByKey(const std::string& key) {
-        if (const auto itPatch = Patches.find(key); itPatch != Patches.end())
-            itPatch->second->Restore();
+    if (sd) sd->Apply();
+    if (sp) sp->Apply();
+}
 
-        if (const auto itDetour = Detours.find(key); itDetour != Detours.end())
-            itDetour->second->Restore();
+void MemoryManager::RestoreByKey(const std::string& key) {
+    std::shared_ptr<Patch> sp;
+    std::shared_ptr<Detour> sd;
+    {
+        std::shared_lock lockP(PatchesMutex);
+        if (const auto itP = Patches.find(key); itP != Patches.end()) sp = itP->second;
+    }
+    {
+        std::shared_lock lockD(DetoursMutex);
+        if (const auto itD = Detours.find(key); itD != Detours.end()) sd = itD->second;
     }
 
-    void MemoryManager::ApplyAll() {
-        ApplyDetours();
-        ApplyPatches();
-        Debug("[MemoryManager] Applied all detours and enabled patches!");
-    }
+    if (sp) sp->Restore();
+    if (sd) sd->Restore();
+}
 
-    void MemoryManager::RestoreAll() {
-        RestorePatches();
-        RestoreDetours();
-        Debug("[MemoryManager] Restored all detours and patches.");
-    }
+void MemoryManager::ApplyAll() {
+    // Apply detours first then patches (as original). Each function handles locking/copying.
+    ApplyDetours();
+    ApplyPatches();
+    Debug("[MemoryManager] Applied all detours and enabled patches!");
+}
 
-    void MemoryManager::ClearAll() {
-        Patches.clear();
-        Detours.clear();
-    }
+void MemoryManager::RestoreAll() {
+    // Restore patches then detours (as original).
+    RestorePatches();
+    RestoreDetours();
+    Debug("[MemoryManager] Restored all detours and patches.");
+}
+
+void MemoryManager::ClearAll() {
+    // clear both maps while holding both mutexes. Lock order: Patches then Detours.
+    std::scoped_lock lock(PatchesMutex, DetoursMutex);
+    Patches.clear();
+    Detours.clear();
+}
+
 
     bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
         const uintptr_t endAddress = address + length;
