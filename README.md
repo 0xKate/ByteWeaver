@@ -23,7 +23,7 @@ include(FetchContent)
 FetchContent_Declare(
         ByteWeaver
         GIT_REPOSITORY https://github.com/0xKate/ByteWeaver.git
-        GIT_TAG        0.3.21
+        GIT_TAG        0.4.30
 )
 FetchContent_MakeAvailable(ByteWeaver)
 
@@ -51,6 +51,8 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 
 #### Use DetourMacros.hpp to quickly setup hooks.
 ~~~c++
+#include <DetourMacros.hpp>
+
 // Example hook of a __cdecl function.
 DECLARE_HOOK(SomeFunc1, int, __cdecl, __cdecl, int a, int b, int c);
 INSTALL_HOOK_ADDRESS(SomeFunc1, 0x1234);
@@ -63,6 +65,7 @@ void MemoryManager::ApplyByKey("SomeThisCallFunc1");
 
 // Example using symbols (funcname, modulename)
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
+AddressDB::Add("SomeFunction", L"SomeModule.dll"); // Uses GetProcAddress to find the symbol.
 AddressDB::AddWithScanPattern("SomeFunction", L"SomeModule.dll", "E9,00,00,00,00"); // Scan pattern.
 AddressDB::AddWithKnownOffset("SomeFunction", L"SomeModule.dll", 0x00001234); // Offset from module base.
 AddressDB::AddWithKnownAddress("SomeFunction", L"SomeModule.dll", 0x12345678); // Static address.

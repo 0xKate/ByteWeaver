@@ -31,8 +31,6 @@ void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPat
             old = it->second;               // keep old to restore after unlock
             Patches.erase(it);
         }
-AddressDB::AddWithKnownAddress("lua_gettop", L"lua514.dll", 0x12345678);
-
         Patches.emplace(key, std::move(hPatch));
     } // unlock
     if (old) old->Restore();
