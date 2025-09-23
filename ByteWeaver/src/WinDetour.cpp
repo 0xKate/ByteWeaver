@@ -14,8 +14,6 @@ namespace ByteWeaver
         this->DetourFunction = detourFunction;
         this->IsEnabled = false;
         this->Size = WIN64 ? 14 : 5;
-        this->OriginalBytes.resize(this->Size);
-        memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(targetAddress), this->Size);
     }
 
     bool Detour::Apply()
@@ -25,12 +23,17 @@ namespace ByteWeaver
 
         DetourTransactionBegin();
 
+        this->OriginalBytes.clear();
+        this->OriginalBytes.resize(this->Size);
+        memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(TargetAddress), this->Size);
+
         __try {
             DetourUpdateThread(GetCurrentThread());
             DetourAttach(OriginalFunction, DetourFunction);
 
             PVOID* failedPointer = nullptr;
-            if (const LONG result = DetourTransactionCommitEx(&failedPointer); result == NO_ERROR) {
+            const LONG result = DetourTransactionCommitEx(&failedPointer);
+            if ( result == NO_ERROR) {
                 if constexpr (ENABLE_DETOUR_LOGGING)
                     Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]", reinterpret_cast<void*>(TargetAddress), DetourFunction);
                 IsPatched = true;
@@ -39,8 +42,11 @@ namespace ByteWeaver
 
                 return true;
             }
-            const char* failMsg = failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
-            Error("[Detour] Failed to apply! : %s", failMsg);
+            if (failedPointer) {
+                Error("[Detour] Failed to apply! Failed pointer: %p, Error code: 0x%08X", *failedPointer, result);
+            } else {
+                Error("[Detour] Failed to apply! Unknown pointer. Error code: 0x%08X", result);
+            }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             const DWORD code = GetExceptionCode();
@@ -64,7 +70,8 @@ namespace ByteWeaver
             DetourDetach(OriginalFunction, DetourFunction);
 
             PVOID* failedPointer = nullptr;
-            if (const long result = DetourTransactionCommitEx(&failedPointer); result == NO_ERROR) {
+            const long result = DetourTransactionCommitEx(&failedPointer);
+            if (result == NO_ERROR) {
                 IsPatched = false;
 
                 if constexpr (ENABLE_DETOUR_LOGGING)
@@ -74,9 +81,10 @@ namespace ByteWeaver
 
                 return true;
             }
-            else {
-                const char* failMsg = failedPointer && *failedPointer ? static_cast<const char*>(*failedPointer) : "Unknown";
-                Error("[Detour] Failed to restore! Error: %ld, Msg: %s", result, failMsg);
+            if (failedPointer) {
+                Error("[Detour] Failed to apply! Failed pointer: %p, Error code: 0x%08X", *failedPointer, result);
+            } else {
+                Error("[Detour] Failed to apply! Unknown pointer. Error code: 0x%08X", result);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -89,9 +97,7 @@ namespace ByteWeaver
         return false;
     }
 
-
-    bool Detour::Enable()
-    {
+    bool Detour::Enable() {
         if (this->IsEnabled)
             return false;
 
@@ -99,8 +105,7 @@ namespace ByteWeaver
         return this->Apply();
     }
 
-    bool Detour::Disable()
-    {
+    bool Detour::Disable() {
         if (!this->IsEnabled)
             return false;
 

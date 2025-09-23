@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.24)
-project(ByteWeaverProject VERSION 0.4.28 LANGUAGES C CXX)
+project(ByteWeaverProject VERSION 0.4.29 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,10 +14,11 @@ else()
 endif()
 
 # --- Subprojects ---
-add_subdirectory(external/Detours)  # defines target: detours,   (and alias Detours::Detours) (IMPORTED GLOBAL) + detours_ep
-add_subdirectory(ByteWeaver)        # defines target: ByteWeaver (and alias ByteWeaver::ByteWeaver)
-add_subdirectory(LogUtils)          # defines target: LogUtils   (and alias ByteWeaver::LogUtils)
-add_subdirectory(DebugTools)        # defines target: DebugTools (and alias ByteWeaver::DebugTools)
+add_subdirectory(external/Detours)  # defines target: detours       (and alias Detours::Detours) (IMPORTED GLOBAL) + detours_ep
+add_subdirectory(ByteWeaver)        # defines target: ByteWeaver    (and alias ByteWeaver::ByteWeaver)
+add_subdirectory(LogUtils)          # defines target: LogUtils      (and alias ByteWeaver::LogUtils)
+add_subdirectory(DebugTools)        # defines target: DebugTools    (and alias ByteWeaver::DebugTools)
+add_subdirectory(ConsoleLogger)     # defines target: ConsoleLogger (and alias ByteWeaver::ConsoleLogger)
 
 # Ensure detours.lib exists
 add_dependencies(ByteWeaver Detours)
@@ -43,6 +44,7 @@ endfunction()
 set_output_names(ByteWeaver)
 set_output_names(LogUtils)
 set_output_names(DebugTools)
+set_output_names(ConsoleLogger)
 
 # --- Install the libraries ---
 include(GNUInstallDirs)
@@ -50,7 +52,7 @@ include(GNUInstallDirs)
 # - ARCHIVE for .lib/.a (static libs)
 # - LIBRARY for .so/.dylib (shared libs)
 # - RUNTIME for .dll/.exe on Windows
-install(TARGETS ByteWeaver LogUtils DebugTools
+install(TARGETS ByteWeaver LogUtils DebugTools ConsoleLogger
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -64,3 +66,5 @@ install(DIRECTORY LogUtils/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/LogU
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 install(DIRECTORY DebugTools/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/DebugTools
             FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
+install(DIRECTORY ConsoleLogger/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ConsoleLogger
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.rc")

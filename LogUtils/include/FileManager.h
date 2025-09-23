@@ -14,6 +14,7 @@ namespace LogUtils
 		static void DumpPaths();
 		static std::string ReadFile(const fs::path& path);
 		static bool WriteFile(const std::string& filePath, const std::string& data, bool append = false);
+		static bool FileExists(const fs::path& path);
 	};
 }
 
