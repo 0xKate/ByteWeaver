@@ -23,11 +23,11 @@ namespace ByteWeaver
 
         DetourTransactionBegin();
 
-        this->OriginalBytes.clear();
-        this->OriginalBytes.resize(this->Size);
-        memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(TargetAddress), this->Size);
-
         __try {
+            this->OriginalBytes.clear();
+            this->OriginalBytes.resize(this->Size);
+            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(TargetAddress), this->Size);
+
             DetourUpdateThread(GetCurrentThread());
             DetourAttach(OriginalFunction, DetourFunction);
 
@@ -50,7 +50,7 @@ namespace ByteWeaver
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             const DWORD code = GetExceptionCode();
-            Error("[Detour] Exception occurred during Apply. Code: 0x%08X", code);
+            Error("[Detour] Exception occurred during apply. Code: 0x%08X", code);
         }
 
         DetourTransactionAbort();
@@ -82,14 +82,14 @@ namespace ByteWeaver
                 return true;
             }
             if (failedPointer) {
-                Error("[Detour] Failed to apply! Failed pointer: %p, Error code: 0x%08X", *failedPointer, result);
+                Error("[Detour] Failed to restore! Failed pointer: %p, Error code: 0x%08X", *failedPointer, result);
             } else {
-                Error("[Detour] Failed to apply! Unknown pointer. Error code: 0x%08X", result);
+                Error("[Detour] Failed to restore! Unknown pointer. Error code: 0x%08X", result);
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             const unsigned long code = GetExceptionCode();
-            Error("[Detour] Exception occurred during Restore. Code: 0x%08X", code);
+            Error("[Detour] Exception occurred during restore. Code: 0x%08X", code);
         }
 
         DetourTransactionAbort();

@@ -52,10 +52,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-
 #include <map>
+#include <memory>
 #include <mutex>
 #include <optional>
+#include <ranges>
 #include <shared_mutex>
 #include <sstream>
 #include <string>

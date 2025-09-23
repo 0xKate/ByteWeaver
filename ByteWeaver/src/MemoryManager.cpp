@@ -3,17 +3,9 @@
 #include "ByteWeaver.h"
 #include "MemoryManager.h"
 
-#include <ranges>
-#include <utility>
+#include "AddressDB.h"
 #include "WinPatch.h"
 #include "WinDetour.h"
-
-#include <map>
-#include <string>
-#include <memory>
-#include <shared_mutex>
-#include <mutex>
-#include <vector>
 
 namespace ByteWeaver {
 
@@ -39,6 +31,8 @@ void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPat
             old = it->second;               // keep old to restore after unlock
             Patches.erase(it);
         }
+AddressDB::AddWithKnownAddress("lua_gettop", L"lua514.dll", 0x12345678);
+
         Patches.emplace(key, std::move(hPatch));
     } // unlock
     if (old) old->Restore();

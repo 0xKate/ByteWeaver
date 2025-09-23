@@ -35,12 +35,12 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 ~~~
 
 #### Include the main ByteWeaver.h
-~~~cpp
+~~~c++
 #include <ByteWeaver.h>
 ~~~
 
 #### Logs and errors can be routed to your custom logger.
-~~~cpp
+~~~c++
 // ByteWeaver.h
 	using LogFunction = void(*)(int level, const char* msg);
 	void ByteWeaver::SetLogCallback(LogFunction fn) 
@@ -48,3 +48,48 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 // If you have a logger
 	ByteWeaver::SetLogCallback(MyLogger::log);
 ~~~
+
+#### Use DetourMacros.hpp to quickly setup hooks.
+~~~c++
+// Example hook of a __cdecl function.
+DECLARE_HOOK(SomeFunc1, int, __cdecl, __cdecl, int a, int b, int c);
+INSTALL_HOOK_ADDRESS(SomeFunc1, 0x1234);
+void MemoryManager::ApplyByKey("SomeFunc1");
+
+// Example hook of a __thiscall method.
+DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
+INSTALL_HOOK_ADDRESS(SomeThisCallFunc1, 0xDEAD);
+void MemoryManager::ApplyByKey("SomeThisCallFunc1");
+
+// Example using symbols (funcname, modulename)
+DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
+AddressDB::AddWithScanPattern("SomeFunction", L"SomeModule.dll", "E9,00,00,00,00"); // Scan pattern.
+AddressDB::AddWithKnownOffset("SomeFunction", L"SomeModule.dll", 0x00001234); // Offset from module base.
+AddressDB::AddWithKnownAddress("SomeFunction", L"SomeModule.dll", 0x12345678); // Static address.
+INSTALL_HOOK_SYMBOL(SomeThisCallFunc1, "SomeFunction", L"SomeModule.dll");
+void MemoryManager::ApplyByKey("SomeThisCallFunc1");
+~~~
+
+#### Use MemoryManager to keep track of your patches and hooks!
+~~~c++
+static void MyPatch()
+{
+    if (auto realAddr = GetProcAddress(GetModuleHandleA("kernelbase.dll"), "SomeKernelBaseFunc")) {
+        MemoryManager::AddPatch("MyPatch", new Patch(reinterpret_cast<uintptr_t>(realAddr), { 0xE9, 0x00, 0x00, 0x00, 0x00 }));
+        MemoryManager::ApplyByKey("MyPatch");
+    }
+}
+
+
+static void MyModificationsWithinRange()
+{
+    std::vector<std::string> mods;
+    if (MemoryManager::IsLocationModified(address, length, &mods)) {
+        for (const auto& key : mods) {
+            // Do something with the list of mods.
+        }
+    }
+}
+~~~
+
+

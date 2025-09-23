@@ -3,8 +3,6 @@
 #include "ByteWeaver.h"
 #include "AddressDB.h"
 
-#include <ranges>
-
 namespace ByteWeaver {
 
     // ---- static storage ----
