@@ -57,20 +57,42 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 DECLARE_HOOK(SomeFunc1, int, __cdecl, __cdecl, int a, int b, int c);
 INSTALL_HOOK_ADDRESS(SomeFunc1, 0x1234);
 void MemoryManager::ApplyByKey("SomeFunc1");
+// The function is already declared by DECLARE_HOOK as #Name+Hook, write your implementation.
+static int __cdecl SomeFunc1Hook(int a, int b, int c) { // #NameHook auto-generated 
+    // Pre-Hook
+    int result = SomeFunc1Original(a,b,c); // #NameOriginal auto-generated
+    // Post-Hook
+    return result;
+}; 
 
 // Example hook of a __thiscall method.
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
 INSTALL_HOOK_ADDRESS(SomeThisCallFunc1, 0xDEAD);
 void MemoryManager::ApplyByKey("SomeThisCallFunc1");
+static int __cdecl SomeThisCallFunc1Hook(int a, int b, int c) {  // #NameHook auto-generated 
+    // Pre-Hook
+    int result = SomeThisCallFunc1Original(a,b,c);  // #NameOriginal auto-generated
+    // Post-Hook
+    return result;
+}; 
 
 // Example using symbols (funcname, modulename)
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
+
+// To use INSTALL_HOOK_SYMBOL, an entry must exist in AddressDB
 AddressDB::Add("SomeFunction", L"SomeModule.dll"); // Uses GetProcAddress to find the symbol.
 AddressDB::AddWithScanPattern("SomeFunction", L"SomeModule.dll", "E9,00,00,00,00"); // Scan pattern.
 AddressDB::AddWithKnownOffset("SomeFunction", L"SomeModule.dll", 0x00001234); // Offset from module base.
 AddressDB::AddWithKnownAddress("SomeFunction", L"SomeModule.dll", 0x12345678); // Static address.
+
 INSTALL_HOOK_SYMBOL(SomeThisCallFunc1, "SomeFunction", L"SomeModule.dll");
 void MemoryManager::ApplyByKey("SomeThisCallFunc1");
+static int __cdecl SomeThisCallFunc1Hook(int a, int b, int c) { // #NameHook auto-generated 
+    // Pre-Hook
+    int result = SomeThisCallFunc1Original(a,b,c); // #NameOriginal auto-generated
+    // Post-Hook
+    return result;
+}; 
 ~~~
 
 #### Use MemoryManager to keep track of your patches and hooks!

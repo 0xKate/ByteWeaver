@@ -20,16 +20,18 @@ namespace ByteWeaver {
             LogCallback(level, buffer);
         }
         else {
-            // default fallback
-            const char* levelStr = nullptr;
+            const char* levelStr;
+            FILE* output = stdout;
+
             switch (level) {
             case 0: levelStr = "DEBUG"; break;
-            case 1:  levelStr = "INFO";  break;
-            case 2:  levelStr = "WARN";  break;
-            case 3: levelStr = "ERROR"; break;
-            default: ;
+            case 1: levelStr = "INFO"; break;
+            case 2: levelStr = "WARN"; output = stderr; break;
+            case 3: levelStr = "ERROR"; output = stderr; break;
+            default: return;
             }
-            fprintf(stderr, "[ByteWeaver][%s] %s\n", levelStr, buffer);
+
+            fprintf(output, "[ByteWeaver][%s] %s\n", levelStr, buffer);
         }
     }
 

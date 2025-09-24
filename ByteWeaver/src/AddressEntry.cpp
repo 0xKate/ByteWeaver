@@ -176,7 +176,7 @@ namespace ByteWeaver {
 
         // Case 1: module base + known offset
         if (ModuleAddress > 0 && KnownOffset.value_or(0) > 0) {
-            return ModuleAddress + KnownOffset.value();
+            return true;
         }
         // Case 2: exported symbol
         if (IsSymbolExport) {
