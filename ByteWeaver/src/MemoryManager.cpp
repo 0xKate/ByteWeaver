@@ -31,6 +31,7 @@ void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPat
             old = it->second;               // keep old to restore after unlock
             Patches.erase(it);
         }
+        hPatch->Key = key.c_str();
         Patches.emplace(key, std::move(hPatch));
     } // unlock
     if (old) old->Restore();
@@ -69,6 +70,7 @@ void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hD
             old = it->second;
             Detours.erase(it);
         }
+        hDetour->Key = key.c_str();
         Detours.emplace(key, std::move(hDetour));
     }
     if (old) old->Restore();
