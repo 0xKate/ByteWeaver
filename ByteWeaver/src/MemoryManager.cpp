@@ -22,19 +22,26 @@ uintptr_t MemoryManager::GetBaseAddress() {
 }
 
 void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch) {
-    // Move out existing and insert new while holding mutex; call Restore on old after unlocking.
-    std::shared_ptr<Patch> old;
+    std::shared_ptr<Patch> oldPatch;
     {
         std::unique_lock lock(PatchesMutex);
+
         if (const auto it = Patches.find(key); it != Patches.end()) {
             Warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
-            old = it->second;               // keep old to restore after unlock
+            oldPatch = it->second;
             Patches.erase(it);
         }
+
+        hPatch->Key = key; // Safe copy
         Patches.emplace(key, std::move(hPatch));
     } // unlock
-    if (old) old->Restore();
+
+    // Restore the old patch outside the lock
+    if (oldPatch) {
+        oldPatch->Restore();
+    }
 }
+
 
 void MemoryManager::AddPatch(const std::string& key, Patch* hPatch) {
     AddPatch(key, std::shared_ptr<Patch>(hPatch));
@@ -61,18 +68,26 @@ void MemoryManager::RestoreAndErasePatch(const std::string& key) {
 }
 
 void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour) {
-    std::shared_ptr<Detour> old;
+std::shared_ptr<Detour> oldDetour;
     {
         std::unique_lock lock(DetoursMutex);
+
         if (const auto it = Detours.find(key); it != Detours.end()) {
             Warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
-            old = it->second;
+            oldDetour = it->second;
             Detours.erase(it);
         }
+
+        hDetour->Key = key; // Safe copy
         Detours.emplace(key, std::move(hDetour));
+    }  // unlock
+
+    // Restore the old detour outside the lock
+    if (oldDetour) {
+        oldDetour->Restore();
     }
-    if (old) old->Restore();
 }
+
 
 void MemoryManager::AddDetour(const std::string& key, Detour* hDetour) {
     AddDetour(key, std::shared_ptr<Detour>(hDetour));
@@ -416,7 +431,7 @@ void MemoryManager::ClearAll() {
 
         std::ostringstream oss;
         oss << std::hex << std::setfill('0');
-        for (uint8_t b : data) {
+        for (const uint8_t b : data) {
             oss << std::setw(2) << static_cast<unsigned>(b);
         }
         return oss.str();

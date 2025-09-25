@@ -11,6 +11,8 @@ namespace ByteWeaver
         uintptr_t TargetAddress;
         std::vector<uint8_t> PatchBytes;
         std::vector<uint8_t> OriginalBytes;
+        size_t Size;
+        std::string Key{};
 
         Patch(uintptr_t patchAddress, std::vector<uint8_t> patchBytes);
 

@@ -12,7 +12,7 @@ namespace ByteWeaver
         constexpr SIZE_T DETOUR_MIN_SIZE = 5;
     #endif
 
-    SIZE_T GetDetourPatchSize(void* funcPointer)
+    SIZE_T GetDetourSize(void* funcPointer)
     {
         auto* bytePointer = static_cast<uint8_t*>(funcPointer);
         SIZE_T nBytes = 0;
@@ -42,9 +42,7 @@ namespace ByteWeaver
         this->OriginalFunction = originalFunction;
         this->DetourFunction = detourFunction;
         this->IsEnabled = false;
-        this->Size = GetDetourPatchSize(reinterpret_cast<void*>(targetAddress));
-        if constexpr (ENABLE_DETOUR_LOGGING)
-            Debug("[Detour] Got patch size of %d for " ADDR_FMT, this->Size, targetAddress);
+        this->Size = GetDetourSize(reinterpret_cast<void*>(targetAddress));
     }
 
     bool Detour::Apply()
@@ -70,8 +68,8 @@ namespace ByteWeaver
 
         __try {
             this->OriginalBytes.clear();
-            this->OriginalBytes.resize(this->Size);
-            memcpy(this->OriginalBytes.data(), reinterpret_cast<void*>(TargetAddress), this->Size);
+            this->OriginalBytes.resize(Size);
+            memcpy(OriginalBytes.data(), reinterpret_cast<void*>(TargetAddress), Size);
 
             DetourUpdateThread(GetCurrentThread());
             DetourAttach(OriginalFunction, DetourFunction);
@@ -79,11 +77,19 @@ namespace ByteWeaver
             PVOID* failedPointer = nullptr;
             const LONG result = DetourTransactionCommitEx(&failedPointer);
             if (result == NO_ERROR) {
-                if constexpr (ENABLE_DETOUR_LOGGING)
-                    Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT "]",
-                          reinterpret_cast<void*>(TargetAddress), DetourFunction);
                 IsPatched = true;
+
+                if constexpr (ENABLE_DETOUR_LOGGING) {
+                    if (!this->Key.empty()) {
+                        Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu, Key: %s]",  TargetAddress, DetourFunction, Size, Key.c_str());
+                    } else {
+                        Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu]",  TargetAddress, DetourFunction, Size);
+                        Warn("[Detour] WARNING: Applied unmanaged detour @" ADDR_FMT, TargetAddress);
+                    }
+                }
+
                 // Removed FlushInstructionCache - Detours handles this
+
                 return true;
             }
 
@@ -125,11 +131,16 @@ namespace ByteWeaver
             if (result == NO_ERROR) {
                 IsPatched = false;
 
-                if constexpr (ENABLE_DETOUR_LOGGING)
-                    Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Original: " ADDR_FMT "]",
-                          reinterpret_cast<void*>(TargetAddress), *OriginalFunction); // Dereference OriginalFunction
+                if constexpr (ENABLE_DETOUR_LOGGING) {
+                    if (!this->Key.empty()) {
+                        Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu, Key: %s]",  TargetAddress, TargetAddress, Size, Key.c_str());
+                    } else {
+                        Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu]",  TargetAddress, TargetAddress, Size);
+                    }
+                }
 
                 // Remove FlushInstructionCache - Detours handles this internally
+
                 return true;
             }
 
