@@ -65,7 +65,7 @@ namespace ByteWeaver {
     bool MemoryManager::ApplyMod(const std::string& key) {
         std::shared_ptr<MemoryModification> hMod;
         if (ModExists(key, &hMod)) {
-            return hMod->Apply();
+            hMod->Apply();
         }
         return false;
     }
@@ -73,7 +73,7 @@ namespace ByteWeaver {
     bool MemoryManager::RestoreMod(const std::string& key) {
         std::shared_ptr<MemoryModification> hMod;
         if (ModExists(key, &hMod)) {
-            return hMod->Restore();
+            hMod->Restore();
         }
         return false;
     }
@@ -82,22 +82,6 @@ namespace ByteWeaver {
         const bool a = DisableMod(key);
         const bool b = EraseMod(key);
         return a & b;
-    }
-
-    bool MemoryManager::EnableMod(const std::string& key) {
-        std::shared_ptr<MemoryModification> hMod;
-        if (ModExists(key, &hMod)) {
-            return hMod->Enable();
-        }
-        return false;
-    }
-
-    bool MemoryManager::DisableMod(const std::string& key) {
-        std::shared_ptr<MemoryModification> hMod;
-        if (ModExists(key, &hMod)) {
-            return hMod->Disable();
-        }
-        return false;
     }
 
     bool MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, const uint16_t groupID) {
@@ -132,14 +116,11 @@ namespace ByteWeaver {
         return allMods;
     }
 
-    // Only Applies Enabled Mods
     bool MemoryManager::ApplyAllMods() {
         std::shared_lock lock(ModsMutex);
         return std::ranges::all_of(Mods | std::views::values,
             [](const auto& hMod) -> bool {
-                if (hMod->IsEnabled)
-                    return hMod->Apply();
-                return true;
+                return hMod->Apply();
             });
     }
 
@@ -167,22 +148,6 @@ namespace ByteWeaver {
         Mods.clear();
     }
 
-    bool MemoryManager::EnableAllMods() {
-        std::shared_lock lock(ModsMutex);
-        return std::ranges::all_of(Mods | std::views::values,
-            [](const auto& hMod) -> bool {
-                    return hMod->Enable();
-            });
-    }
-
-    bool MemoryManager::DisableAllMods() {
-        std::shared_lock lock(ModsMutex);
-        return std::ranges::all_of(Mods | std::views::values,
-            [](const auto& hMod) -> bool {
-                    return hMod->Enable();
-            });
-    }
-
     auto MemoryManager::GetModsByGroupID(const uint16_t groupID)-> std::vector<std::shared_ptr<MemoryModification>>
     {
         std::shared_lock lock(ModsMutex);
@@ -205,7 +170,7 @@ namespace ByteWeaver {
         std::shared_lock lock(ModsMutex);
         return std::ranges::all_of(Mods | std::views::values,
             [groupID](const auto& hMod) -> bool {
-                if (hMod->GroupID == groupID && hMod->IsEnabled)
+                if (hMod->GroupID == groupID)
                     return hMod->Apply();
                 return true;
             });
@@ -244,28 +209,6 @@ namespace ByteWeaver {
             }
             return false;
         });
-    }
-
-    bool MemoryManager::EnableAllByGroupID(const uint16_t groupID)
-    {
-        std::shared_lock lock(ModsMutex);
-        return std::ranges::all_of(Mods | std::views::values,
-            [groupID](const auto& hMod) -> bool {
-                if (hMod->GroupID == groupID)
-                    return hMod->Apply();
-                return true;
-            });
-    }
-
-    auto MemoryManager::DisableAllByGroupID(const uint16_t groupID) -> bool
-    {
-        std::shared_lock lock(ModsMutex);
-        return std::ranges::all_of(Mods | std::views::values,
-            [groupID](const auto& hMod) -> bool {
-                if (hMod->GroupID == groupID)
-                    return hMod->Disable();
-                return true;
-            });
     }
 
     auto MemoryManager::GetModsByType(const ModType modType)-> std::vector<std::shared_ptr<MemoryModification>>
@@ -334,30 +277,6 @@ namespace ByteWeaver {
         });
     }
 
-    bool MemoryManager::EnableAllByType(const ModType modType)
-    {
-        std::shared_lock lock(ModsMutex);
-
-        return std::ranges::all_of(Mods | std::views::values,
-            [modType](const auto& hMod) -> bool {
-                if (hMod->Type == modType && hMod)
-                    return hMod->Enable();
-                return true;
-            });
-    }
-
-    bool MemoryManager::DisableAllByType(const ModType modType)
-    {
-        std::shared_lock lock(ModsMutex);
-
-        return std::ranges::all_of(Mods | std::views::values,
-            [modType](const auto& hMod) -> bool {
-                if (hMod->Type == modType && hMod)
-                    return hMod->Disable();
-                return true;
-            });
-    }
-
     // --- START Deprecated but backwards compatible
 
     [[deprecated("Use AddMod(key, mod) or consider using CreatePatch() instead!")]]
@@ -383,14 +302,7 @@ namespace ByteWeaver {
 
     [[deprecated("Use MemoryManager::ApplyByType(ModType::Patch) instead")]]
     bool MemoryManager::ApplyPatches() {
-        std::shared_lock lock(ModsMutex);
-
-        return std::ranges::all_of(Mods | std::views::values,
-            [](const auto& hMod) -> bool {
-                if (hMod->Type == ModType::Patch && hMod->IsEnabled)
-                    return hMod->Apply();
-                return true;
-            });
+        return ApplyByType(ModType::Patch);
     }
 
     [[deprecated("Use MemoryManager::RestoreByType(ModType::Patch) instead")]]
@@ -469,7 +381,7 @@ namespace ByteWeaver {
         const uintptr_t endAddress = address + length;
 
         for (const auto& [key, mod] : Mods) {
-            if (mod->IsPatched) {
+            if (mod->IsModified) {
                 if (const uintptr_t modEnd = mod->TargetAddress + mod->Size; address < modEnd && endAddress > mod->TargetAddress) {
                     detectedKeys->push_back(key);
                 }

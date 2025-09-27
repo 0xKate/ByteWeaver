@@ -36,8 +36,7 @@ namespace ByteWeaver
 
     Detour::Detour(const uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction)
     {
-        this->IsEnabled = false;
-        this->IsPatched = false;
+        this->IsModified = false;
         this->TargetAddress = targetAddress;
         this->Size = GetDetourSize(reinterpret_cast<void*>(targetAddress));
         this->Type = ModType::Detour;
@@ -49,7 +48,7 @@ namespace ByteWeaver
 
     bool Detour::Apply()
     {
-        if (IsPatched)
+        if (IsModified)
             return true;
 
         // Validate inputs
@@ -79,7 +78,7 @@ namespace ByteWeaver
             PVOID* failedPointer = nullptr;
             const LONG result = DetourTransactionCommitEx(&failedPointer);
             if (result == NO_ERROR) {
-                IsPatched = true;
+                IsModified = true;
 
                 if constexpr (ENABLE_DETOUR_LOGGING) {
                     if (!this->Key.empty()) {
@@ -112,13 +111,13 @@ namespace ByteWeaver
 
     bool Detour::Restore()
     {
-        if (!IsPatched)
+        if (!IsModified)
             return true;
 
         // Validate we have what we need
         if (!OriginalFunction || !DetourFunction) {
             Error("[Detour] Invalid function pointers for restore: " ADDR_FMT, TargetAddress);
-            IsPatched = false;
+            IsModified = false;
             return false;
         }
 
@@ -131,7 +130,7 @@ namespace ByteWeaver
             PVOID* failedPointer = nullptr;
             const LONG result = DetourTransactionCommitEx(&failedPointer);
             if (result == NO_ERROR) {
-                IsPatched = false;
+                IsModified = false;
 
                 if constexpr (ENABLE_DETOUR_LOGGING) {
                     if (!this->Key.empty()) {
@@ -159,21 +158,5 @@ namespace ByteWeaver
 
         DetourTransactionAbort();
         return false;
-    }
-
-    bool Detour::Enable() {
-        if (this->IsEnabled)
-            return false;
-
-        this->IsEnabled = true;
-        return this->Apply();
-    }
-
-    bool Detour::Disable() {
-        if (!this->IsEnabled)
-            return false;
-
-        this->IsEnabled = false;
-        return this->Restore();
     }
 }
