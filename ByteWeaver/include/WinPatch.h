@@ -2,23 +2,20 @@
 
 #pragma once
 
+#include <MemoryModification.h>
+
 namespace ByteWeaver
 {
-    class Patch {
+    class Patch final : public MemoryModification {
     public:
-        bool IsEnabled;
-        bool IsPatched;
-        uintptr_t TargetAddress;
         std::vector<uint8_t> PatchBytes;
-        std::vector<uint8_t> OriginalBytes;
-        size_t Size;
-        std::string Key{};
+
 
         Patch(uintptr_t patchAddress, std::vector<uint8_t> patchBytes);
 
-        bool Apply();
-        bool Restore();
-        bool Enable();
-        bool Disable();
+        bool Apply() override;
+        bool Restore() override;
+        bool Enable() override;
+        bool Disable() override;
     };
 }

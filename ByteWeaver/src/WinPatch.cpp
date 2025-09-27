@@ -5,11 +5,14 @@
 
 namespace ByteWeaver
 {
-    Patch::Patch(const uintptr_t patchAddress, std::vector<uint8_t> patchBytes)
-        : IsEnabled(false), IsPatched(false), TargetAddress(patchAddress), PatchBytes(std::move(patchBytes))
+    Patch::Patch(const uintptr_t patchAddress, std::vector<uint8_t> patchBytes) : PatchBytes(std::move(patchBytes))
     {
+        this->IsEnabled = false;
+        this->IsPatched = false;
+        this->TargetAddress = patchAddress;
         this->Size = this->PatchBytes.size();
-        OriginalBytes.resize(Size);
+        this->Type = ModType::Detour;
+        this->OriginalBytes.resize(Size);
     }
 
     bool Patch::Apply()

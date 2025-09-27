@@ -9,35 +9,60 @@ namespace ByteWeaver {
 	{
 	public:
 		static uintptr_t BaseAddress;
-		static std::map<std::string, std::shared_ptr<Patch>> Patches;
-		static std::map<std::string, std::shared_ptr<Detour>> Detours;
 
-		static std::shared_mutex PatchesMutex;
-		static std::shared_mutex DetoursMutex;
+		static std::map<std::string, std::shared_ptr<MemoryModification>> Mods;
+		static std::shared_mutex ModsMutex;
+
 		static uintptr_t GetBaseAddress();
+		static bool ModExists(const std::string& key, std::shared_ptr<MemoryModification>* hOutMod = nullptr);
+		static bool AddMod(const std::string& key, std::shared_ptr<MemoryModification> hMod, uint16_t groupID = 0x0000);
+		static bool EraseMod(const std::string& key);
+		static auto GetMod(const std::string& key) -> std::shared_ptr<MemoryModification>;
+		static bool ApplyMod(const std::string& key);
+		static bool RestoreMod(const std::string& key);
+		static bool RestoreAndEraseMod(const std::string& key);
 
-		static void AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch);
-		static void AddPatch(const std::string& key, Patch* hPatch);
-		static void ErasePatch(const std::string& key);
-		static void RestoreAndErasePatch(const std::string& key);
+		static auto GetAllMods() -> std::vector<std::shared_ptr<MemoryModification>>;
+		static bool ApplyAllMods();
+		static bool RestoreAllMods();
+		static void RestoreAndEraseAllMods();
 
-		static void AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour);
-		static void AddDetour(const std::string& key, Detour* hDetour);
-		static void EraseDetour(const std::string& key);
-		static void RestoreAndEraseDetour(const std::string& key);
+		static auto GetModsByGroupID(uint16_t groupID) -> std::vector<std::shared_ptr<MemoryModification>>;
+		static bool ApplyByGroupID(uint16_t groupID);
+		static bool RestoreByGroupID(uint16_t groupID);
+		static void EraseByGroupID(uint16_t groupID);
+		static void RestoreAndEraseByGroupID(uint16_t groupID);
 
-		static void ApplyPatches();
-		static void RestorePatches();
+		static auto GetModsByType(ModType modType) -> std::vector<std::shared_ptr<MemoryModification>>;
+		static bool ApplyByType(ModType modType);
+		static bool RestoreByType(ModType modType);
+		static void EraseByType(ModType modType);
+		static void RestoreAndEraseByType(ModType modType);
 
-		static void ApplyDetours();
-		static void RestoreDetours();
+		static bool CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, uint16_t groupID = 0x0000);
+		static bool AddPatch(const std::string& key, const std::shared_ptr<Patch>& hPatch, uint16_t groupID = 0x0000);
+		static bool AddPatch(const std::string& key, Patch* patch, uint16_t groupID = 0x0000);
+		static bool ErasePatch(const std::string& key);
+		static bool RestoreAndErasePatch(const std::string& key);
+
+		static bool ApplyPatches();
+		static bool RestorePatches();
+
+		static bool CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, uint16_t groupID = 0x0000);
+		static bool AddDetour(const std::string& key, const std::shared_ptr<Detour>& hDetour, uint16_t groupID = 0x0000);
+		static bool AddDetour(const std::string& key, Detour* detour, uint16_t groupID = 0x0000);
+		static bool EraseDetour(const std::string& key);
+		static bool RestoreAndEraseDetour(const std::string& key);
+
+		static bool ApplyDetours();
+		static bool RestoreDetours();
+
+		static bool ApplyAll();
+		static bool RestoreAll();
+		static void ClearAll();
 
 		static void ApplyByKey(const std::string& key);
 		static void RestoreByKey(const std::string& key);
-
-		static void ApplyAll();
-		static void RestoreAll();
-		static void ClearAll();
 
 		static bool IsLocationModified(uintptr_t address, size_t length, std::vector<std::string>* detectedKeys);
 		static bool IsAddressValid(uintptr_t address);

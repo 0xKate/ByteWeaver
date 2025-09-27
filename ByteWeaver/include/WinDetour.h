@@ -2,24 +2,20 @@
 
 #pragma once
 
+#include <MemoryModification.h>
+
 namespace ByteWeaver {
 
-    class Detour {
+    class Detour final : public MemoryModification {
     public:
-        bool IsEnabled;
-        bool IsPatched;
-        uintptr_t TargetAddress;
         PVOID* OriginalFunction;
         PVOID  DetourFunction;
-        std::vector<uint8_t> OriginalBytes;
-        size_t Size;
-        std::string Key{};
 
         Detour(uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction);
 
-        bool Apply();
-        bool Restore();
-        bool Enable();
-        bool Disable();
+        bool Apply() override;
+        bool Restore() override;
+        bool Enable() override;
+        bool Disable() override;
     };
 }

@@ -3,233 +3,367 @@
 #include "ByteWeaver.h"
 #include "MemoryManager.h"
 
-#include "AddressDB.h"
+#include <utility>
+
 #include "WinPatch.h"
 #include "WinDetour.h"
 
 namespace ByteWeaver {
 
-// static member definitions
-std::map<std::string, std::shared_ptr<Patch>> MemoryManager::Patches;
-std::map<std::string, std::shared_ptr<Detour>> MemoryManager::Detours;
+    std::map<std::string, std::shared_ptr<MemoryModification>> MemoryManager::Mods;
+    std::shared_mutex MemoryManager::ModsMutex;
 
-std::shared_mutex MemoryManager::PatchesMutex;
-std::shared_mutex MemoryManager::DetoursMutex;
+    uintptr_t MemoryManager::GetBaseAddress() {
+        HMODULE hModule = GetModuleHandle(nullptr);
+        return reinterpret_cast<uintptr_t>(hModule);
+    }
 
-uintptr_t MemoryManager::GetBaseAddress() {
-    HMODULE hModule = GetModuleHandle(nullptr);
-    return reinterpret_cast<uintptr_t>(hModule);
-}
+    // --- class MemoryModification
 
-void MemoryManager::AddPatch(const std::string& key, std::shared_ptr<Patch> hPatch) {
-    std::shared_ptr<Patch> oldPatch;
+    bool MemoryManager::ModExists(const std::string& key, std::shared_ptr<MemoryModification>* hOutMod) {
+        std::shared_lock lock(ModsMutex);
+        if (const auto it = Mods.find(key); it != Mods.end()) {
+            if (hOutMod)
+                *hOutMod = it->second;
+            else
+                Error("[MemoryManager] Mod with key '%s' already exists!", key.c_str());
+            return true;
+        }
+        return false;
+    }
+
+    bool MemoryManager::AddMod(const std::string& key, std::shared_ptr<MemoryModification> hMod, const uint16_t groupID) {
+        if (!ModExists(key)) {
+            std::unique_lock lock(ModsMutex);
+            hMod->Key = key;
+            hMod->GroupID = groupID;
+            Mods.emplace(key, hMod);
+            return true;
+        }
+        return false;
+    }
+
+    bool MemoryManager::EraseMod(const std::string& key) {
+        std::unique_lock lock(ModsMutex);
+        if (const auto it = Mods.find(key); it != Mods.end()) {
+            Mods.erase(it);
+            return true;
+        }
+        Error("[MemoryManager] (EraseMod) Mod with key '%s' does not exist!", key.c_str());
+        return false;
+    }
+
+    auto MemoryManager::GetMod(const std::string& key) -> std::shared_ptr<MemoryModification> {
+        std::shared_lock lock(ModsMutex);
+        if (const auto it = Mods.find(key); it != Mods.end()) {
+            return it->second;
+        }
+        Error("[MemoryManager] (GetMod) Mod with key '%s' does not exist!", key.c_str());
+        return nullptr;
+    }
+
+    bool MemoryManager::ApplyMod(const std::string& key) {
+        std::shared_ptr<MemoryModification> hMod;
+        if (ModExists(key, &hMod)) {
+            return hMod->Apply();
+        }
+        return false;
+    }
+
+    bool MemoryManager::RestoreMod(const std::string& key) {
+        std::shared_ptr<MemoryModification> hMod;
+        if (ModExists(key, &hMod)) {
+            return hMod->Restore();
+        }
+        return false;
+    }
+
+    bool MemoryManager::RestoreAndEraseMod(const std::string& key) {
+        const bool a = RestoreMod(key);
+        const bool b = EraseMod(key);
+        return a & b;
+    }
+
+    bool MemoryManager::ApplyAllMods()
     {
-        std::unique_lock lock(PatchesMutex);
+        std::shared_lock lock(ModsMutex);
 
-        if (const auto it = Patches.find(key); it != Patches.end()) {
-            Warn("Patch with key '%s' already exists and will be replaced.", key.c_str());
-            oldPatch = it->second;
-            Patches.erase(it);
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) { return !hMod || hMod->Apply(); });
+    }
+
+    bool MemoryManager::RestoreAllMods()
+    {
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) { return !hMod || hMod->Restore(); });
+    }
+
+    void MemoryManager::RestoreAndEraseAllMods()
+    {
+        std::unique_lock lock(ModsMutex);
+
+        std::erase_if(Mods, [](const auto& pair) {
+            pair.second->Restore();
+            return true;
+        });
+    }
+
+    auto MemoryManager::GetAllMods() -> std::vector<std::shared_ptr<MemoryModification>>
+    {
+        std::shared_lock lock(ModsMutex);
+
+        std::vector<std::shared_ptr<MemoryModification>> allMods;
+        allMods.reserve(Mods.size());
+
+        for (const auto& hMod : Mods | std::views::values) {
+            allMods.push_back(hMod);
         }
 
-        hPatch->Key = key; // Safe copy
-        Patches.emplace(key, std::move(hPatch));
-    } // unlock
-
-    // Restore the old patch outside the lock
-    if (oldPatch) {
-        oldPatch->Restore();
+        return allMods;
     }
-}
 
-
-void MemoryManager::AddPatch(const std::string& key, Patch* hPatch) {
-    AddPatch(key, std::shared_ptr<Patch>(hPatch));
-}
-
-void MemoryManager::ErasePatch(const std::string& key) {
-    std::unique_lock lock(PatchesMutex);
-    if (const auto it = Patches.find(key); it != Patches.end()) {
-        Patches.erase(it);
-    }
-}
-
-void MemoryManager::RestoreAndErasePatch(const std::string& key) {
-    // Move out the object while holding lock, erase, then call Restore() outside lock.
-    std::shared_ptr<Patch> toRestore;
+    auto MemoryManager::GetModsByGroupID(const uint16_t groupID)-> std::vector<std::shared_ptr<MemoryModification>>
     {
-        std::unique_lock lock(PatchesMutex);
-        if (const auto it = Patches.find(key); it != Patches.end()) {
-            toRestore = it->second;
-            Patches.erase(it);
-        }
-    }
-    if (toRestore) toRestore->Restore();
-}
+        std::shared_lock lock(ModsMutex);
 
-void MemoryManager::AddDetour(const std::string& key, std::shared_ptr<Detour> hDetour) {
-std::shared_ptr<Detour> oldDetour;
-    {
-        std::unique_lock lock(DetoursMutex);
+        std::vector<std::shared_ptr<MemoryModification>> groupIdMods;
+        groupIdMods.reserve(Mods.size());
 
-        if (const auto it = Detours.find(key); it != Detours.end()) {
-            Warn("Detour with key '%s' already exists and will be replaced.", key.c_str());
-            oldDetour = it->second;
-            Detours.erase(it);
-        }
-
-        hDetour->Key = key; // Safe copy
-        Detours.emplace(key, std::move(hDetour));
-    }  // unlock
-
-    // Restore the old detour outside the lock
-    if (oldDetour) {
-        oldDetour->Restore();
-    }
-}
-
-
-void MemoryManager::AddDetour(const std::string& key, Detour* hDetour) {
-    AddDetour(key, std::shared_ptr<Detour>(hDetour));
-}
-
-void MemoryManager::EraseDetour(const std::string& key) {
-    std::unique_lock lock(DetoursMutex);
-    if (const auto it = Detours.find(key); it != Detours.end()) {
-        Detours.erase(it);
-    }
-}
-
-void MemoryManager::RestoreAndEraseDetour(const std::string& key) {
-    std::shared_ptr<Detour> toRestore;
-    {
-        std::unique_lock lock(DetoursMutex);
-        if (const auto it = Detours.find(key); it != Detours.end()) {
-            toRestore = it->second;
-            Detours.erase(it);
-        }
-    }
-    if (toRestore) toRestore->Restore();
-}
-
-void MemoryManager::ApplyPatches() {
-    // copy pointers to call Apply() outside lock
-    std::vector<std::shared_ptr<Patch>> toApply;
-    {
-        std::shared_lock lock(PatchesMutex);
-        toApply.reserve(Patches.size());
-        for (const auto& val : Patches | std::views::values) {
-            if (auto const& ptr = val; ptr && ptr->IsEnabled) toApply.push_back(ptr);
-        }
-    } // unlock
-    for (auto& p : toApply) if (p) p->Apply();
-}
-
-void MemoryManager::RestorePatches() {
-    std::vector<std::shared_ptr<Patch>> toRestore;
-    {
-        std::shared_lock lock(PatchesMutex);
-        toRestore.reserve(Patches.size());
-        for (const auto& val : Patches | std::views::values) {
-            if (auto const& ptr = val; ptr && ptr->IsPatched) toRestore.push_back(ptr);
-        }
-    }
-    for (auto& p : toRestore) if (p) p->Restore();
-}
-
-void MemoryManager::ApplyDetours() {
-    std::vector<std::shared_ptr<Detour>> toApply;
-    {
-        std::shared_lock lock(DetoursMutex);
-        toApply.reserve(Detours.size());
-        for (const auto& val : Detours | std::views::values) {
-            if (auto const& ptr = val) toApply.push_back(ptr);
-        }
-    }
-    for (auto& d : toApply) if (d) d->Apply();
-}
-
-void MemoryManager::RestoreDetours() {
-    std::vector<std::shared_ptr<Detour>> toRestore;
-    {
-        std::shared_lock lock(DetoursMutex);
-        toRestore.reserve(Detours.size());
-        for (const auto& val : Detours | std::views::values) {
-            if (auto const& ptr = val) toRestore.push_back(ptr);
-        }
-    }
-    for (auto& d : toRestore) if (d) d->Restore();
-}
-
-void MemoryManager::ApplyByKey(const std::string& key) {
-    // Always lock PatchesMutex then DetoursMutex to preserve ordering and avoid deadlocks.
-    std::shared_ptr<Patch> sp;
-    std::shared_ptr<Detour> sd;
-    {
-        std::shared_lock lockP(PatchesMutex);
-        if (const auto itP = Patches.find(key); itP != Patches.end()) sp = itP->second;
-    }
-    {
-        std::shared_lock lockD(DetoursMutex);
-        if (const auto itD = Detours.find(key); itD != Detours.end()) sd = itD->second;
-    }
-
-    if (sd) sd->Apply();
-    if (sp) sp->Apply();
-}
-
-void MemoryManager::RestoreByKey(const std::string& key) {
-    std::shared_ptr<Patch> sp;
-    std::shared_ptr<Detour> sd;
-    {
-        std::shared_lock lockP(PatchesMutex);
-        if (const auto itP = Patches.find(key); itP != Patches.end()) sp = itP->second;
-    }
-    {
-        std::shared_lock lockD(DetoursMutex);
-        if (const auto itD = Detours.find(key); itD != Detours.end()) sd = itD->second;
-    }
-
-    if (sp) sp->Restore();
-    if (sd) sd->Restore();
-}
-
-void MemoryManager::ApplyAll() {
-    // Apply detours first then patches (as original). Each function handles locking/copying.
-    ApplyDetours();
-    ApplyPatches();
-    Debug("[MemoryManager] Applied all detours and enabled patches!");
-}
-
-void MemoryManager::RestoreAll() {
-    // Restore patches then detours (as original).
-    RestorePatches();
-    RestoreDetours();
-    Debug("[MemoryManager] Restored all detours and patches.");
-}
-
-void MemoryManager::ClearAll() {
-    // clear both maps while holding both mutexes. Lock order: Patches then Detours.
-    std::scoped_lock lock(PatchesMutex, DetoursMutex);
-    Patches.clear();
-    Detours.clear();
-}
-
-
-    bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
-        const uintptr_t endAddress = address + length;
-        for (const auto& [fst, snd] : Patches) {
-            if (const std::shared_ptr<Patch> patch = snd; patch->IsPatched) {
-                if (const uintptr_t patchEnd = patch->TargetAddress + patch->PatchBytes.size(); address < patchEnd && endAddress > patch->TargetAddress) {
-                    detectedKeys->push_back(fst);
-                }
+        for (const auto& hMod : Mods | std::views::values) {
+            if (hMod->GroupID == groupID) {
+                groupIdMods.push_back(hMod);
             }
         }
 
-        for (const auto& [fst, snd] : Detours) {
-            if (const std::shared_ptr<Detour> detour = snd; detour->IsPatched) {
-                if (const uintptr_t detourEnd = detour->TargetAddress + detour->Size; address < detourEnd && endAddress > detour->TargetAddress) {
-                    detectedKeys->push_back(fst);
+        return groupIdMods;
+    }
+
+    bool MemoryManager::ApplyByGroupID(const uint16_t groupID)
+    {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [groupID](const auto& hMod) -> bool {
+                if (hMod->GroupID == groupID)
+                    return hMod->Apply();
+                return true;
+            });
+    }
+
+    bool MemoryManager::RestoreByGroupID(const uint16_t groupID)
+    {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [groupID](const auto& hMod) -> bool {
+                if (hMod->GroupID == groupID)
+                    return hMod->Restore();
+                return true;
+            });
+    }
+
+    void MemoryManager::EraseByGroupID(const uint16_t groupID)
+    {
+        std::unique_lock lock(ModsMutex);
+        std::erase_if(Mods, [groupID](const auto& pair) {
+            if (pair.second->GroupID == groupID) {
+                return true; // Tells erase_if to erase this element
+            }
+            return false;
+        });
+
+    }
+
+    void MemoryManager::RestoreAndEraseByGroupID(const uint16_t groupID)
+    {
+        std::unique_lock lock(ModsMutex);
+        std::erase_if(Mods, [groupID](const auto& pair) {
+            if (pair.second->GroupID == groupID) {
+                pair.second->Restore();
+                return true; // Tells erase_if to erase this element
+            }
+            return false;
+        });
+    }
+
+    auto MemoryManager::GetModsByType(const ModType modType)-> std::vector<std::shared_ptr<MemoryModification>>
+    {
+        std::shared_lock lock(ModsMutex);
+
+        std::vector<std::shared_ptr<MemoryModification>> typeMods;
+        typeMods.reserve(Mods.size());
+
+        for (const auto& hMod : Mods | std::views::values) {
+            if (hMod->Type == modType) {
+                typeMods.push_back(hMod);
+            }
+        }
+
+        return typeMods;
+    }
+
+    bool MemoryManager::ApplyByType(const ModType modType)
+    {
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [modType](const auto& hMod) -> bool {
+                if (hMod->Type == modType)
+                    return hMod->Apply();
+                return true;
+            });
+    }
+
+    bool MemoryManager::RestoreByType(const ModType modType)
+    {
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [modType](const auto& hMod) -> bool {
+                if (hMod->Type == modType)
+                    return hMod->Restore();
+                return true;
+            });
+    }
+
+    void MemoryManager::EraseByType(const ModType modType)
+    {
+        std::unique_lock lock(ModsMutex);
+
+        std::erase_if(Mods, [modType](const auto& pair) {
+            if (pair.second->Type == modType) {
+                return true; // Tells erase_if to erase this element
+            }
+            return false;
+        });
+
+    }
+
+    void MemoryManager::RestoreAndEraseByType(const ModType modType)
+    {
+        std::unique_lock lock(ModsMutex);
+
+        std::erase_if(Mods, [modType](const auto& pair) {
+            if (pair.second->Type == modType) {
+                pair.second->Restore();
+                return true; // Tells erase_if to erase this element
+            }
+            return false;
+        });
+    }
+
+    // --- Deprecated but backwards compatible
+    // --- class Patch
+
+    bool MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, const uint16_t groupID) {
+        if (!ModExists(key)) {
+            const auto patch = std::make_shared<Patch>(patchAddress, patchBytes);
+            AddMod(key, patch, groupID);
+            return true;
+        }
+        return false;
+    }
+
+    bool MemoryManager::AddPatch(const std::string& key, const std::shared_ptr<Patch>& hPatch, const uint16_t groupID) {
+        return AddMod(key, hPatch, groupID);
+    }
+
+    bool MemoryManager::AddPatch(const std::string& key, Patch* patch, const uint16_t groupID) {
+        const auto hPatch = std::shared_ptr<Patch>(patch);
+        return AddMod(key, hPatch, groupID);
+    }
+
+    bool MemoryManager::ErasePatch(const std::string& key) {
+        return EraseMod(key);
+    }
+
+    bool MemoryManager::RestoreAndErasePatch(const std::string& key) {
+        return RestoreAndEraseMod(key);
+    }
+
+    bool MemoryManager::ApplyPatches() {
+        return ApplyByType(ModType::Detour);
+    }
+
+    bool MemoryManager::RestorePatches() {
+        return RestoreByType(ModType::Patch);
+    }
+
+    // --- Deprecated but backwards compatible
+    // --- class Detour
+
+    bool MemoryManager::CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, const uint16_t groupID) {
+        if (!ModExists(key)) {
+            const auto detour = std::make_shared<Detour>(targetAddress, originalFunction, detourFunction);
+            AddMod(key, detour, groupID);
+            return true;
+        }
+        return false;
+    }
+
+    bool MemoryManager::AddDetour(const std::string& key, const std::shared_ptr<Detour>& hDetour, const uint16_t groupID) {
+        return AddMod(key, hDetour, groupID);
+    }
+
+    bool MemoryManager::AddDetour(const std::string& key, Detour* detour, const uint16_t groupID) {
+        const auto hDetour = std::shared_ptr<Detour>(detour);
+        return AddMod(key, hDetour, groupID);
+    }
+
+    bool MemoryManager::EraseDetour(const std::string& key) {
+        return EraseMod(key);
+    }
+
+    bool MemoryManager::RestoreAndEraseDetour(const std::string& key) {
+        return RestoreAndEraseMod(key);
+    }
+
+    bool MemoryManager::ApplyDetours() {
+        return ApplyByType(ModType::Detour);
+    }
+
+    bool MemoryManager::RestoreDetours() {
+        return RestoreByType(ModType::Detour);
+    }
+
+    bool MemoryManager::ApplyAll() {
+        const bool a = ApplyDetours();
+        const bool b = ApplyPatches();
+        Debug("[MemoryManager] Applied all detours and enabled patches!");
+        return a & b;
+    }
+
+    bool MemoryManager::RestoreAll() {
+        const bool a = RestorePatches();
+        const bool b = RestoreDetours();
+        Debug("[MemoryManager] Restored all detours and patches.");
+        return a & b;
+    }
+
+    void MemoryManager::ClearAll() {
+        std::unique_lock lock(ModsMutex);
+        Mods.clear();
+    }
+
+    // --- Deprecated but backwards compatible
+
+    void MemoryManager::ApplyByKey(const std::string& key) {
+        ApplyMod(key);
+    }
+
+    void MemoryManager::RestoreByKey(const std::string& key) {
+        RestoreMod(key);
+    }
+
+    // --- Memory Modifying Functions
+
+    bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
+        const uintptr_t endAddress = address + length;
+
+        for (const auto& [key, mod] : Mods) {
+            if (mod->IsPatched) {
+                if (const uintptr_t modEnd = mod->TargetAddress + mod->Size; address < modEnd && endAddress > mod->TargetAddress) {
+                    detectedKeys->push_back(key);
                 }
             }
         }

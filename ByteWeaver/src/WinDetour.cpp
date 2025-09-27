@@ -34,15 +34,17 @@ namespace ByteWeaver
         return nBytes;
     }
 
-
     Detour::Detour(const uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction)
     {
-        this->TargetAddress = targetAddress;
+        this->IsEnabled = false;
         this->IsPatched = false;
+        this->TargetAddress = targetAddress;
+        this->Size = GetDetourSize(reinterpret_cast<void*>(targetAddress));
+        this->Type = ModType::Detour;
+        this->OriginalBytes.resize(Size);
+
         this->OriginalFunction = originalFunction;
         this->DetourFunction = detourFunction;
-        this->IsEnabled = false;
-        this->Size = GetDetourSize(reinterpret_cast<void*>(targetAddress));
     }
 
     bool Detour::Apply()
