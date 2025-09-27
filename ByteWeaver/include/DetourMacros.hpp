@@ -43,15 +43,13 @@ static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
     {                                                               \
         Name##Address = _sym->GetAddress().value();                 \
         Name##Original = reinterpret_cast<Name##_t>(Name##Address); \
-        Name##Detour = std::make_shared<Detour>(                    \
-        Name##Address, &reinterpret_cast<PVOID&>(Name##Original),   \
-        reinterpret_cast<void*>(Name##Hook)                         \
-        );                                                          \
+        MemoryManager::CreateDetour(#Name, Name##Address,           \
+            &reinterpret_cast<PVOID&>(Name##Original),              \
+            reinterpret_cast<void*>(Name##Hook));                   \
                                                                     \
         Logger::Debug("[" #Name "] Resolved %s at " ADDR_FMT,       \
             #Symbol, static_cast<uintptr_t>(Name##Address));        \
                                                                     \
-        MemoryManager::AddDetour(#Name, Name##Detour);              \
     }                                                               \
     else {                                                          \
         Logger::Error("[" #Name "] Could not find %s in %s",        \
@@ -69,11 +67,7 @@ static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
 {                                                                   \
     Name##Address = AddressValue;                                   \
     Name##Original = reinterpret_cast<Name##_t>(Name##Address);     \
-    Name##Detour = std::make_shared<Detour>(                        \
-        Name##Address, &reinterpret_cast<PVOID&>(Name##Original),   \
-        reinterpret_cast<void*>(Name##Hook)                         \
-    );                                                              \
-    Logger::Debug("[" #Name "] Resolved %s at " ADDR_FMT,           \
-    #Name, static_cast<uintptr_t>(Name##Address));                  \
-    MemoryManager::AddDetour(#Name, Name##Detour);                  \
+    MemoryManager::CreateDetour(#Name, Name##Address,               \
+        &reinterpret_cast<PVOID&>(Name##Original),                  \
+        reinterpret_cast<void*>(Name##Hook));                       \
 }
