@@ -79,35 +79,43 @@ namespace ByteWeaver {
     }
 
     bool MemoryManager::RestoreAndEraseMod(const std::string& key) {
-        const bool a = RestoreMod(key);
+        const bool a = DisableMod(key);
         const bool b = EraseMod(key);
         return a & b;
     }
 
-    bool MemoryManager::ApplyAllMods()
-    {
-        std::shared_lock lock(ModsMutex);
-
-        return std::ranges::all_of(Mods | std::views::values,
-            [](const auto& hMod) { return !hMod || hMod->Apply(); });
+    bool MemoryManager::EnableMod(const std::string& key) {
+        std::shared_ptr<MemoryModification> hMod;
+        if (ModExists(key, &hMod)) {
+            return hMod->Enable();
+        }
+        return false;
     }
 
-    bool MemoryManager::RestoreAllMods()
-    {
-        std::shared_lock lock(ModsMutex);
-
-        return std::ranges::all_of(Mods | std::views::values,
-            [](const auto& hMod) { return !hMod || hMod->Restore(); });
+    bool MemoryManager::DisableMod(const std::string& key) {
+        std::shared_ptr<MemoryModification> hMod;
+        if (ModExists(key, &hMod)) {
+            return hMod->Disable();
+        }
+        return false;
     }
 
-    void MemoryManager::RestoreAndEraseAllMods()
-    {
-        std::unique_lock lock(ModsMutex);
-
-        std::erase_if(Mods, [](const auto& pair) {
-            pair.second->Restore();
+    bool MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, const uint16_t groupID) {
+        if (!ModExists(key)) {
+            const auto patch = std::make_shared<Patch>(patchAddress, patchBytes);
+            AddMod(key, patch, groupID);
             return true;
-        });
+        }
+        return false;
+    }
+
+    bool MemoryManager::CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, const uint16_t groupID) {
+        if (!ModExists(key)) {
+            const auto detour = std::make_shared<Detour>(targetAddress, originalFunction, detourFunction);
+            AddMod(key, detour, groupID);
+            return true;
+        }
+        return false;
     }
 
     auto MemoryManager::GetAllMods() -> std::vector<std::shared_ptr<MemoryModification>>
@@ -122,6 +130,57 @@ namespace ByteWeaver {
         }
 
         return allMods;
+    }
+
+    // Only Applies Enabled Mods
+    bool MemoryManager::ApplyAllMods() {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) -> bool {
+                if (hMod->IsEnabled)
+                    return hMod->Apply();
+                return true;
+            });
+    }
+
+    bool MemoryManager::RestoreAllMods()
+    {
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) { return hMod->Restore(); });
+    }
+
+    void MemoryManager::RestoreAndEraseAllMods()
+    {
+        std::unique_lock lock(ModsMutex);
+
+        std::erase_if(Mods, [](const auto& pair) {
+            pair.second->Restore();
+            return true;
+        });
+    }
+
+    void MemoryManager::EraseAllMods()
+    {
+        std::unique_lock lock(ModsMutex);
+        Mods.clear();
+    }
+
+    bool MemoryManager::EnableAllMods() {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) -> bool {
+                    return hMod->Enable();
+            });
+    }
+
+    bool MemoryManager::DisableAllMods() {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) -> bool {
+                    return hMod->Enable();
+            });
     }
 
     auto MemoryManager::GetModsByGroupID(const uint16_t groupID)-> std::vector<std::shared_ptr<MemoryModification>>
@@ -140,12 +199,13 @@ namespace ByteWeaver {
         return groupIdMods;
     }
 
+    // Only applies enabled mods
     bool MemoryManager::ApplyByGroupID(const uint16_t groupID)
     {
         std::shared_lock lock(ModsMutex);
         return std::ranges::all_of(Mods | std::views::values,
             [groupID](const auto& hMod) -> bool {
-                if (hMod->GroupID == groupID)
+                if (hMod->GroupID == groupID && hMod->IsEnabled)
                     return hMod->Apply();
                 return true;
             });
@@ -186,6 +246,28 @@ namespace ByteWeaver {
         });
     }
 
+    bool MemoryManager::EnableAllByGroupID(const uint16_t groupID)
+    {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [groupID](const auto& hMod) -> bool {
+                if (hMod->GroupID == groupID)
+                    return hMod->Apply();
+                return true;
+            });
+    }
+
+    auto MemoryManager::DisableAllByGroupID(const uint16_t groupID) -> bool
+    {
+        std::shared_lock lock(ModsMutex);
+        return std::ranges::all_of(Mods | std::views::values,
+            [groupID](const auto& hMod) -> bool {
+                if (hMod->GroupID == groupID)
+                    return hMod->Disable();
+                return true;
+            });
+    }
+
     auto MemoryManager::GetModsByType(const ModType modType)-> std::vector<std::shared_ptr<MemoryModification>>
     {
         std::shared_lock lock(ModsMutex);
@@ -208,7 +290,7 @@ namespace ByteWeaver {
 
         return std::ranges::all_of(Mods | std::views::values,
             [modType](const auto& hMod) -> bool {
-                if (hMod->Type == modType)
+                if (hMod->Type == modType && hMod)
                     return hMod->Apply();
                 return true;
             });
@@ -252,80 +334,102 @@ namespace ByteWeaver {
         });
     }
 
-    // --- Deprecated but backwards compatible
-    // --- class Patch
+    bool MemoryManager::EnableAllByType(const ModType modType)
+    {
+        std::shared_lock lock(ModsMutex);
 
-    bool MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, const uint16_t groupID) {
-        if (!ModExists(key)) {
-            const auto patch = std::make_shared<Patch>(patchAddress, patchBytes);
-            AddMod(key, patch, groupID);
-            return true;
-        }
-        return false;
+        return std::ranges::all_of(Mods | std::views::values,
+            [modType](const auto& hMod) -> bool {
+                if (hMod->Type == modType && hMod)
+                    return hMod->Enable();
+                return true;
+            });
     }
 
+    bool MemoryManager::DisableAllByType(const ModType modType)
+    {
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [modType](const auto& hMod) -> bool {
+                if (hMod->Type == modType && hMod)
+                    return hMod->Disable();
+                return true;
+            });
+    }
+
+    // --- START Deprecated but backwards compatible
+
+    [[deprecated("Use AddMod(key, mod) or consider using CreatePatch() instead!")]]
     bool MemoryManager::AddPatch(const std::string& key, const std::shared_ptr<Patch>& hPatch, const uint16_t groupID) {
         return AddMod(key, hPatch, groupID);
     }
 
+    [[deprecated("Use AddMod(key, mod) or consider using CreatePatch() instead!")]]
     bool MemoryManager::AddPatch(const std::string& key, Patch* patch, const uint16_t groupID) {
         const auto hPatch = std::shared_ptr<Patch>(patch);
         return AddMod(key, hPatch, groupID);
     }
 
+    [[deprecated("Use MemoryManager::EraseMod(key) instead")]]
     bool MemoryManager::ErasePatch(const std::string& key) {
         return EraseMod(key);
     }
 
+    [[deprecated("Use MemoryManager::RestoreAndEraseMod(key) instead")]]
     bool MemoryManager::RestoreAndErasePatch(const std::string& key) {
         return RestoreAndEraseMod(key);
     }
 
+    [[deprecated("Use MemoryManager::ApplyByType(ModType::Patch) instead")]]
     bool MemoryManager::ApplyPatches() {
-        return ApplyByType(ModType::Patch);
+        std::shared_lock lock(ModsMutex);
+
+        return std::ranges::all_of(Mods | std::views::values,
+            [](const auto& hMod) -> bool {
+                if (hMod->Type == ModType::Patch && hMod->IsEnabled)
+                    return hMod->Apply();
+                return true;
+            });
     }
 
+    [[deprecated("Use MemoryManager::RestoreByType(ModType::Patch) instead")]]
     bool MemoryManager::RestorePatches() {
         return RestoreByType(ModType::Patch);
     }
 
-    // --- Deprecated but backwards compatible
-    // --- class Detour
-
-    bool MemoryManager::CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, const uint16_t groupID) {
-        if (!ModExists(key)) {
-            const auto detour = std::make_shared<Detour>(targetAddress, originalFunction, detourFunction);
-            AddMod(key, detour, groupID);
-            return true;
-        }
-        return false;
-    }
-
+    [[deprecated("Use AddMod(key, mod) or consider using CreateDetour() instead!")]]
     bool MemoryManager::AddDetour(const std::string& key, const std::shared_ptr<Detour>& hDetour, const uint16_t groupID) {
         return AddMod(key, hDetour, groupID);
     }
 
+    [[deprecated("Use AddMod(key, mod) or consider using CreateDetour() instead!")]]
     bool MemoryManager::AddDetour(const std::string& key, Detour* detour, const uint16_t groupID) {
         const auto hDetour = std::shared_ptr<Detour>(detour);
         return AddMod(key, hDetour, groupID);
     }
 
+    [[deprecated("Use MemoryManager::EraseMod(key) instead")]]
     bool MemoryManager::EraseDetour(const std::string& key) {
         return EraseMod(key);
     }
 
+    [[deprecated("Use MemoryManager::RestoreAndEraseMod(key) instead")]]
     bool MemoryManager::RestoreAndEraseDetour(const std::string& key) {
         return RestoreAndEraseMod(key);
     }
 
+    [[deprecated("Use MemoryManager::ApplyByType(ModType::Detour) instead")]]
     bool MemoryManager::ApplyDetours() {
         return ApplyByType(ModType::Detour);
     }
 
+    [[deprecated("Use MemoryManager::RestoreByType(ModType::Detour) instead")]]
     bool MemoryManager::RestoreDetours() {
         return RestoreByType(ModType::Detour);
     }
 
+    [[deprecated("Use MemoryManager::ApplyAllMods() instead")]]
     bool MemoryManager::ApplyAll() {
         const bool a = ApplyDetours();
         const bool b = ApplyPatches();
@@ -333,6 +437,7 @@ namespace ByteWeaver {
         return a & b;
     }
 
+    [[deprecated("Use MemoryManager::RestoreAllMods() instead")]]
     bool MemoryManager::RestoreAll() {
         const bool a = RestorePatches();
         const bool b = RestoreDetours();
@@ -340,20 +445,23 @@ namespace ByteWeaver {
         return a & b;
     }
 
+    [[deprecated("Use MemoryManager::EraseAllMods() instead")]]
     void MemoryManager::ClearAll() {
         std::unique_lock lock(ModsMutex);
         Mods.clear();
     }
 
-    // --- Deprecated but backwards compatible
-
+    [[deprecated("Use MemoryManager::ApplyMod() instead")]]
     void MemoryManager::ApplyByKey(const std::string& key) {
         ApplyMod(key);
     }
 
+    [[deprecated("Use MemoryManager::RestoreMod() instead")]]
     void MemoryManager::RestoreByKey(const std::string& key) {
         RestoreMod(key);
     }
+
+    // --- END Deprecated but backwards compatible
 
     // --- Memory Modifying Functions
 

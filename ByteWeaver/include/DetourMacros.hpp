@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ByteWeaver.h>
+#include <WinDetour.h>
+#include "MemoryManager.h"
 
 /**
  *  Declare a hook.
@@ -13,7 +15,7 @@
 using Name##_t = Ret(CallType*)(__VA_ARGS__);                       \
 static inline uintptr_t Name##Address{};                            \
 static inline Name##_t  Name##Original{};                           \
-static inline std::shared_ptr<Detour> Name##Detour{};               \
+static inline std::shared_ptr<ByteWeaver::Detour> Name##Detour{};               \
 static Ret HookCallType Name##Hook(__VA_ARGS__);
 
 
@@ -27,7 +29,7 @@ static Ret HookCallType Name##Hook(__VA_ARGS__);
 using Name##_t = Ret(__thiscall*)(const void* p_this, __VA_ARGS__); \
 static inline uintptr_t Name##Address{};                            \
 static inline Name##_t  Name##Original{};                           \
-static inline std::shared_ptr<Detour> Name##Detour{};               \
+static inline std::shared_ptr<ByteWeaver::Detour> Name##Detour{};   \
 static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
 
 
@@ -43,15 +45,13 @@ static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
     {                                                               \
         Name##Address = _sym->GetAddress().value();                 \
         Name##Original = reinterpret_cast<Name##_t>(Name##Address); \
-        Name##Detour = std::make_shared<Detour>(                    \
-        Name##Address, &reinterpret_cast<PVOID&>(Name##Original),   \
-        reinterpret_cast<void*>(Name##Hook)                         \
-        );                                                          \
+        MemoryManager::CreateDetour(#Name, Name##Address,           \
+            &reinterpret_cast<PVOID&>(Name##Original),              \
+            reinterpret_cast<void*>(Name##Hook));                   \
                                                                     \
         Logger::Debug("[" #Name "] Resolved %s at " ADDR_FMT,       \
             #Symbol, static_cast<uintptr_t>(Name##Address));        \
                                                                     \
-        MemoryManager::AddDetour(#Name, Name##Detour);              \
     }                                                               \
     else {                                                          \
         Logger::Error("[" #Name "] Could not find %s in %s",        \
@@ -69,11 +69,8 @@ static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
 {                                                                   \
     Name##Address = AddressValue;                                   \
     Name##Original = reinterpret_cast<Name##_t>(Name##Address);     \
-    Name##Detour = std::make_shared<Detour>(                        \
-        Name##Address, &reinterpret_cast<PVOID&>(Name##Original),   \
-        reinterpret_cast<void*>(Name##Hook)                         \
-    );                                                              \
-    Logger::Debug("[" #Name "] Resolved %s at " ADDR_FMT,           \
-    #Name, static_cast<uintptr_t>(Name##Address));                  \
-    MemoryManager::AddDetour(#Name, Name##Detour);                  \
+    ByteWeaver::MemoryManager::CreateDetour(#Name, Name##Address,   \
+        &reinterpret_cast<PVOID&>(Name##Original),                  \
+        reinterpret_cast<void*>(Name##Hook));                       \
 }
+
