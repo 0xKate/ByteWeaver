@@ -7,8 +7,7 @@ namespace ByteWeaver
 {
     Patch::Patch(const uintptr_t patchAddress, std::vector<uint8_t> patchBytes) : PatchBytes(std::move(patchBytes))
     {
-        this->IsEnabled = false;
-        this->IsPatched = false;
+        this->IsModified = false;
         this->TargetAddress = patchAddress;
         this->Size = this->PatchBytes.size();
         this->Type = ModType::Patch;
@@ -17,7 +16,7 @@ namespace ByteWeaver
 
     bool Patch::Apply()
     {
-        if (this->IsPatched)
+        if (this->IsModified)
             return true;
 
         if (TargetAddress == 0x0) {
@@ -61,7 +60,7 @@ namespace ByteWeaver
 
             FlushInstructionCache(GetCurrentProcess(), targetPointer, Size);
 
-            this->IsPatched = true;
+            this->IsModified = true;
             return true;
 
         }
@@ -78,7 +77,7 @@ namespace ByteWeaver
 
     bool Patch::Restore()
     {
-        if (!this->IsPatched)
+        if (!this->IsModified)
             return true;
 
         DWORD oldProtection;
@@ -113,7 +112,7 @@ namespace ByteWeaver
 
             FlushInstructionCache(GetCurrentProcess(), targetPointer, Size);
 
-            this->IsPatched = false;
+            this->IsModified = false;
             return true;
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -125,23 +124,5 @@ namespace ByteWeaver
 
             return false;
         }        
-    }
-
-    bool Patch::Enable()
-    {
-        if (this->IsEnabled)
-            return false;
-
-        this->IsEnabled = true;
-        return Apply();
-    }
-
-    bool Patch::Disable()
-    {
-        if (!this->IsEnabled)
-            return false;
-
-        this->IsEnabled = false;
-        return Restore();
     }
 }

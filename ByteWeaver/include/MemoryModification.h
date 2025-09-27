@@ -20,8 +20,7 @@ namespace ByteWeaver
         virtual ~MemoryModification() = default; // always virtual in base classes
 
         // Shared parameters
-        bool IsEnabled = false;
-        bool IsPatched = false;
+        bool IsModified = false;
         uintptr_t TargetAddress = NULL;
         std::vector<uint8_t> OriginalBytes{};
         size_t Size = 0;
@@ -32,8 +31,6 @@ namespace ByteWeaver
         // Pure virtual interface
         virtual bool Apply() = 0;
         virtual bool Restore() = 0;
-        virtual bool Enable() = 0;
-        virtual bool Disable() = 0;
     };
 
 }

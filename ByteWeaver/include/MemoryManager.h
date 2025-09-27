@@ -21,8 +21,6 @@ namespace ByteWeaver {
 		static bool ApplyMod(const std::string& key);
 		static bool RestoreMod(const std::string& key);
 		static bool RestoreAndEraseMod(const std::string& key);
-		static bool EnableMod(const std::string& key);
-		static bool DisableMod(const std::string& key);
 
 		static bool CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, uint16_t groupID = 0x0000);
 		static bool CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, uint16_t groupID = 0x0000);
@@ -32,26 +30,18 @@ namespace ByteWeaver {
 		static bool RestoreAllMods();
 		static void RestoreAndEraseAllMods();
 		static void EraseAllMods();
-		static bool EnableAllMods();
-		static bool DisableAllMods();
 
 		static auto GetModsByGroupID(uint16_t groupID) -> std::vector<std::shared_ptr<MemoryModification>>;
 		static bool ApplyByGroupID(uint16_t groupID); // Only Applies Enabled Mods. (Use EnableByGroupID if you truly want everything on.)
 		static bool RestoreByGroupID(uint16_t groupID);
 		static void EraseByGroupID(uint16_t groupID); // Erase entire group id (Does not restore)
 		static void RestoreAndEraseByGroupID(uint16_t groupID);
-		static bool EnableAllByGroupID(uint16_t groupID);
-		static bool DisableAllByGroupID(uint16_t groupID);
 
 		static auto GetModsByType(ModType modType) -> std::vector<std::shared_ptr<MemoryModification>>;
 		static bool ApplyByType(ModType modType); // Only Applies Enabled Mods. (Use EnableAllByType if you truly want everything on)
 		static bool RestoreByType(ModType modType);
 		static void EraseByType(ModType modType); // Erase all by type (Does not restore)
 		static void RestoreAndEraseByType(ModType modType);
-		static bool EnableAllByType(ModType modType);
-		static bool DisableAllByType(ModType modType);
-
-
 
 		// --- START Deprecated
 

@@ -15,7 +15,5 @@ namespace ByteWeaver
 
         bool Apply() override;
         bool Restore() override;
-        bool Enable() override;
-        bool Disable() override;
     };
 }
