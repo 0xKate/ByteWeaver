@@ -11,7 +11,7 @@ namespace ByteWeaver
         this->IsPatched = false;
         this->TargetAddress = patchAddress;
         this->Size = this->PatchBytes.size();
-        this->Type = ModType::Detour;
+        this->Type = ModType::Patch;
         this->OriginalBytes.resize(Size);
     }
 

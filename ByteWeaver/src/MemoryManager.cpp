@@ -282,7 +282,7 @@ namespace ByteWeaver {
     }
 
     bool MemoryManager::ApplyPatches() {
-        return ApplyByType(ModType::Detour);
+        return ApplyByType(ModType::Patch);
     }
 
     bool MemoryManager::RestorePatches() {
