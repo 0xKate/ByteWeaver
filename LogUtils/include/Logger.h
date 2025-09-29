@@ -3,13 +3,23 @@
 namespace LogUtils
 {
 
-#if !defined(LogLevel)
+#if defined(HAVE_BYTEWEAVER)
+    using LogLevel   = ByteWeaver::LogLevel;
+    using LogFunction = void(*)(LogLevel, const std::string&);
+
+#elif defined(HAVE_LOGUTILS)
+    using LogLevel   = LogUtils::LogLevel;
+    using LogFunction = void(*)(LogLevel, const std::string&);
+
+#else
     enum class LogLevel : int {
         LOG_DEBUG,
         LOG_INFO,
         LOG_WARN,
         LOG_ERROR
     };
+    using LogFunction = void(*)(LogLevel, const std::string&);
+#define HAVE_LOGUTILS
 #endif
 
     class Logger {

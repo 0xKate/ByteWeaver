@@ -26,3 +26,4 @@ namespace LogUtils
 {
     namespace fs = std::filesystem;
 }
+
