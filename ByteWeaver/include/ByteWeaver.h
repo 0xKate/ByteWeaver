@@ -1,5 +1,5 @@
-﻿/*
-    Copyright(C) 2025 0xKate
+/*
+Copyright(C) 2025 0xKate
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files(the "Software"), to deal
@@ -36,83 +36,11 @@
     applicable laws and to use it only in ethical and lawful ways.
 */
 
-// ReSharper disable file CppUnusedIncludeDirective
-
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-// STD Lib
-
-#include <array>
-#include <cstdarg>
-#include <cstdint>
-#include <cstdio>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <ranges>
-#include <shared_mutex>
-#include <sstream>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
-#ifndef BYTEWEAVER_ENABLE_LOGGING
-  #ifndef NDEBUG
-    // Debug config (NDEBUG not defined)
-    #define BYTEWEAVER_ENABLE_LOGGING 1
-  #else
-    // Release-like configs (NDEBUG defined)
-    #define BYTEWEAVER_ENABLE_LOGGING 0
-  #endif
-#endif
-
-#if defined(_WIN64)
-    #ifndef ADDR_FMT
-        #define ADDR_FMT "0x%016llx"
-    #endif
-#else
-    #ifndef ADDR_FMT
-        #define ADDR_FMT "0x%08x"
-    #endif
-#endif
-
-namespace ByteWeaver {
-
-    namespace fs = std::filesystem;
-
-#if defined(_WIN64)
-    constexpr bool WIN64 = true;
-#elif defined(_M_IX86)
-    constexpr bool WIN64 = false;
-#else
-    #error "Unknown architecture"
-#endif
-
-#if defined(BYTEWEAVER_ENABLE_LOGGING) && BYTEWEAVER_ENABLE_LOGGING
-    constexpr bool ENABLE_DETOUR_LOGGING = true;
-    constexpr bool ENABLE_PATCH_LOGGING  = true;
-#else
-    constexpr bool ENABLE_DETOUR_LOGGING = false;
-    constexpr bool ENABLE_PATCH_LOGGING  = false;
-#endif
-
-    // Signature expected for custom loggers
-    using LogFunction = void(*)(int level, const char* msg);
-
-    // Install a custom logger from the outside
-    void SetLogCallback(LogFunction fn);
-
-    void Debug(const char* fmt, ...);
-    void Info(const char* fmt, ...);
-    void Warn(const char* fmt, ...);
-    void Error(const char* fmt, ...);
-}
+#include <AddressDB.h>
+#include <AddressEntry.h>
+#include <AddressScanner.h>
+#include <MemoryManager.h>
+#include <WinDetour.h>
+#include <WinPatch.h>
