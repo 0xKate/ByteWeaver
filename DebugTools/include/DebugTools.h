@@ -7,10 +7,10 @@
 #include <dbghelp.h>
 #pragma comment(lib, "Dbghelp.lib")
 
-namespace ByteWeaver::DebugTools {
-
-	class SymbolLoader {       
-	public:
+namespace ByteWeaver::DebugTools
+{
+    class SymbolLoader {
+    public:
         // --- Symbol Init/Teardown ---
         static bool InvadeProcess;
         static bool SymLoaded;
@@ -18,18 +18,18 @@ namespace ByteWeaver::DebugTools {
         static void SetTargetModules(std::vector<const char*> targetModules);
         static void LoadModuleSymbols();
         static void EnsureSymInit();
-		static void ForceCleanupSymbols();
-		static void CleanupSymbols();
+        static void ForceCleanupSymbols();
+        static void CleanupSymbols();
 
-	private:
-		// Serialize all Sym* calls.		
-		static std::atomic<int> SymRefCount;		
-		static std::vector<const char*> TargetModules;
-		static bool InitSymbols();		
-	};
+    private:
+        // Serialize all Sym* calls.
+        static std::atomic<int> SymRefCount;
+        static std::vector<const char*> TargetModules;
+        static bool InitSymbols();
+    };
 
-	class Inspection {
-	public:
+    class Inspection {
+    public:
         struct ModuleInfo {
             std::wstring ModuleName{};
             std::filesystem::path ModulePath{};
@@ -68,12 +68,13 @@ namespace ByteWeaver::DebugTools {
         static ModuleInfo GetModuleInfo(uintptr_t address);
         static ModuleInfo GetModuleInfo(const std::wstring& moduleName);
 
-    #ifdef _WIN64
-		static FunctionInfo GetFunctionInfo(uintptr_t address);
-    #endif
-	};
+#ifdef _WIN64
+        static FunctionInfo GetFunctionInfo(uintptr_t address);
+#endif
+    };
 
-    class Traceback {
+    class Traceback
+    {
     public:
         struct FrameInfo {
             uintptr_t CallAddress{};
@@ -90,7 +91,7 @@ namespace ByteWeaver::DebugTools {
                     DWORD64 displacement = 0;
                     DWORD displacement32 = 0;
 
-                    // SYMBOL_INFO 
+                    // SYMBOL_INFO
                     // ReSharper disable once CppLocalVariableMayBeConst
                     char buffer[sizeof(SYMBOL_INFO) + 512]{};
                     auto* symbol = reinterpret_cast<SYMBOL_INFO*>(buffer);
@@ -137,6 +138,8 @@ namespace ByteWeaver::DebugTools {
             }
         };
 
+
+#ifdef _WIN64
         // skip: frames to skip from the top (this function, its caller, etc.)
         // maxFrames: how many frames to capture (capped at 62 by the API)
         static TraceInfo Capture(const USHORT skip = 1, USHORT maxFrames = 62) {
@@ -144,7 +147,7 @@ namespace ByteWeaver::DebugTools {
 
             auto traceback = TraceInfo{};
 
-            traceback.StackSize = RtlCaptureStackBackTrace(skip, maxFrames, traceback.Stack.data(), nullptr);            
+            traceback.StackSize = RtlCaptureStackBackTrace(skip, maxFrames, traceback.Stack.data(), nullptr);
             traceback.Frames.reserve(traceback.StackSize);
 
             for (USHORT i = 0; i < traceback.StackSize; ++i) {
@@ -155,101 +158,58 @@ namespace ByteWeaver::DebugTools {
             }
             return traceback;
         }
-    };
 
-    class ProcessDumper {
-    public:
-        struct ModuleInfoEx : Inspection::ModuleInfo {
-            // --- VirtualQuery region granularity ---
-            struct RegionInfo {
-                uintptr_t Start = 0;         // BaseAddress
-                size_t    Size  = 0;         // RegionSize
-                uintptr_t End   = 0;         // Start + Size
-                uintptr_t AllocationBase = 0;
-                DWORD State   = 0;           // MEM_COMMIT / MEM_RESERVE / MEM_FREE
-                DWORD Protect = 0;           // PAGE_*
-                DWORD Type    = 0;           // MEM_IMAGE / MEM_MAPPED / MEM_PRIVATE
+#else
+        static USHORT ScanStackMemory(USHORT skip, USHORT maxFrames, void** addresses) {
+            USHORT count = 0;
+            DWORD* stackPtr;
 
-                [[nodiscard]] bool Readable() const {
-                    if (State != MEM_COMMIT) return false;
-                    return (Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
+            __asm mov stackPtr, esp;
+
+            DWORD* scanStart = stackPtr;
+            DWORD* scanEnd = stackPtr + 1024; // Scan up to 4KB of stack
+
+            for (DWORD* ptr = scanStart; ptr < scanEnd && count < maxFrames; ptr++) {
+                if (IsBadReadPtr(ptr, 4)) {
+                    break;
                 }
-            };
 
-            // Aggregated regions for this allocation
-            std::vector<RegionInfo> Regions;
-            uintptr_t               AllocationBase = 0; // same as ModuleBase if PE at offset 0
-
-            // PEs: headers & section map (if recognized)
-            PIMAGE_DOS_HEADER       Dos = nullptr;
-            PIMAGE_NT_HEADERS       Nt  = nullptr;
-            PIMAGE_FILE_HEADER      FileHdr = nullptr;
-            PIMAGE_OPTIONAL_HEADER  Opt = nullptr;
-            PIMAGE_SECTION_HEADER   FirstSection = nullptr;
-
-            bool      IsPe32Plus = false;
-            bool      IsDll      = false;
-            bool      RelocationsStripped = false;
-
-            DWORD     Characteristics = 0;
-            WORD      DllCharacteristics = 0;
-            DWORD     SectionAlignment = 0;
-            DWORD     FileAlignment    = 0;
-            size_t    SizeOfHeaders    = 0;
-            DWORD     TimeDateStamp    = 0;
-
-            struct SectionInfo {
-                char      Name[9]{};
-                DWORD     Characteristics = 0;
-                DWORD     Rva = 0;
-                DWORD     VirtualSize = 0;
-                DWORD     RawPtr = 0;
-                DWORD     RawSize = 0;
-                uintptr_t VaStart = 0;
-                uintptr_t VaEnd   = 0;
-                bool ContainsRva(const DWORD rva) const {
-                    return rva >= Rva && rva < Rva + std::max<DWORD>(1, VirtualSize);
-                }
-                bool ContainsVa(const uintptr_t va) const {
-                    return va >= VaStart && va < VaEnd;
-                }
-            };
-            std::vector<SectionInfo> Sections;
-
-            struct DirInfo {
-                DWORD     Rva = 0;
-                DWORD     Size = 0;
-                uintptr_t Va = 0; // 0 for Security (file-only)
-                bool Present() const { return Rva && Size; }
-            };
-            std::array<DirInfo, IMAGE_NUMBEROF_DIRECTORY_ENTRIES> Dirs{};
-            DirInfo ExportDir, ImportDir, ResourceDir, ExceptionDir, SecurityDir, BaseRelocDir,
-                    DebugDir, ArchitectureDir, GlobalPtrDir, TlsDir, LoadConfigDir, BoundImportDir,
-                    IatDir, DelayImportDir, ClrDir, ReservedDir;
-
-            // RVA/VA helpers (valid only if ModuleBase set)
-            uintptr_t RvaToVa(const DWORD rva) const { return rva ? ModuleBase + rva : 0; }
-            DWORD     VaToRva(const uintptr_t va) const { return va >= ModuleBase && va < ModuleEnd ? static_cast<DWORD>(va - ModuleBase) : 0; }
-
-            DWORD RvaToFileOffset(const DWORD rva) const {
-                for (const auto& s : Sections) {
-                    if (s.ContainsRva(rva)) {
-                        const DWORD delta = rva - s.Rva;
-                        if (delta >= s.RawSize) return 0;
-                        return s.RawPtr + delta;
+                if (DWORD addr = *ptr; addr >= 0x00400000 && addr <= 0x7FFFFFFF) {
+                    if (!IsBadReadPtr(reinterpret_cast<void*>(addr), 1)) {
+                        if (!IsBadReadPtr(reinterpret_cast<void*>(addr - 1), 1)) {
+                            if (auto codePtr = reinterpret_cast<BYTE*>(addr - 1); *codePtr == 0xE8 || *codePtr == 0xFF || *codePtr == 0x9A) {
+                                if (skip > 0) {
+                                    skip--;
+                                } else {
+                                    addresses[count++] = reinterpret_cast<void*>(addr);
+                                }
+                            }
+                        }
                     }
                 }
-                return 0;
             }
-        };
+            return count;
+        }
 
-        static std::vector<ModuleInfoEx> EnumerateAllocationsAsModules();
-        static const ModuleInfoEx* FindAllocationForVa(const std::vector<ModuleInfoEx>& mods, uintptr_t va);
+        static TraceInfo Capture(const USHORT skip = 1, USHORT maxFrames = 62) {
+            if (maxFrames > 62) maxFrames = 62;
 
-    private:
-        static void AppendRegion(const MEMORY_BASIC_INFORMATION& mbi, ModuleInfoEx::RegionInfo& out);
-        static void TryFillPathName(uintptr_t anyVaInThisAllocation, std::filesystem::path& pathOut,
-                                    std::wstring& nameOut);
-        static bool TryParsePe(ModuleInfoEx& mi);
+            auto traceback = TraceInfo{};
+
+            traceback.StackSize = ScanStackMemory(skip, maxFrames, traceback.Stack.data());
+
+            traceback.Frames.reserve(traceback.StackSize);
+            Debug("Final stacktrace size: %u", traceback.StackSize);
+
+            for (USHORT i = 0; i < traceback.StackSize; ++i) {
+                traceback.Frames.push_back(FrameInfo{
+                    reinterpret_cast<uintptr_t>(traceback.Stack[i]),
+                    i
+                });
+            }
+
+            return traceback;
+        }
+#endif
     };
 }
