@@ -15,7 +15,6 @@
 using Name##_t = Ret(CallType*)(__VA_ARGS__);                       \
 static inline uintptr_t Name##Address{};                            \
 static inline Name##_t  Name##Original{};                           \
-static inline std::shared_ptr<ByteWeaver::Detour> Name##Detour{};               \
 static Ret HookCallType Name##Hook(__VA_ARGS__);
 
 
@@ -29,7 +28,6 @@ static Ret HookCallType Name##Hook(__VA_ARGS__);
 using Name##_t = Ret(__thiscall*)(const void* p_this, __VA_ARGS__); \
 static inline uintptr_t Name##Address{};                            \
 static inline Name##_t  Name##Original{};                           \
-static inline std::shared_ptr<ByteWeaver::Detour> Name##Detour{};   \
 static Ret HookCallType Name##Hook(const void* p_this, int edx, __VA_ARGS__);
 
 
