@@ -79,7 +79,7 @@ namespace ByteWeaver
             if (result == NO_ERROR) {
                 IsModified = true;
 
-                if constexpr (ENABLE_DETOUR_LOGGING) {
+                if constexpr (BYTEWEAVER_ENABLE_LOGGING) {
                     if (!this->Key.empty()) {
                         Debug("[Detour] (Apply) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu, Key: %s]",  TargetAddress, DetourFunction, Size, Key.c_str());
                     } else {
@@ -131,7 +131,7 @@ namespace ByteWeaver
             if (result == NO_ERROR) {
                 IsModified = false;
 
-                if constexpr (ENABLE_DETOUR_LOGGING) {
+                if constexpr (BYTEWEAVER_ENABLE_LOGGING) {
                     if (!this->Key.empty()) {
                         Debug("[Detour] (Restore) [Target: " ADDR_FMT " -> Detour: " ADDR_FMT " Size: %zu, Key: %s]",  TargetAddress, TargetAddress, Size, Key.c_str());
                     } else {

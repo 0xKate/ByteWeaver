@@ -29,16 +29,6 @@
 #include <utility>
 #include <vector>
 
-#ifndef BYTEWEAVER_ENABLE_LOGGING
-  #ifndef NDEBUG
-    // Debug config (NDEBUG not defined)
-    #define BYTEWEAVER_ENABLE_LOGGING 1
-  #else
-    // Release-like configs (NDEBUG defined)
-    #define BYTEWEAVER_ENABLE_LOGGING 0
-  #endif
-#endif
-
 #if defined(_WIN64)
     #ifndef ADDR_FMT
         #define ADDR_FMT "0x%016llx"
@@ -59,14 +49,6 @@ namespace ByteWeaver {
     constexpr bool WIN64 = false;
 #else
     #error "Unknown architecture"
-#endif
-
-#if defined(BYTEWEAVER_ENABLE_LOGGING) && BYTEWEAVER_ENABLE_LOGGING
-    constexpr bool ENABLE_DETOUR_LOGGING = true;
-    constexpr bool ENABLE_PATCH_LOGGING  = true;
-#else
-    constexpr bool ENABLE_DETOUR_LOGGING = false;
-    constexpr bool ENABLE_PATCH_LOGGING  = false;
 #endif
 
     // Signature expected for custom loggers

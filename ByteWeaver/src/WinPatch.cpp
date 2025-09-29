@@ -48,7 +48,7 @@ namespace ByteWeaver
             memcpy(targetPointer, PatchBytes.data(), Size);            // Apply patch
             VirtualProtect(targetPointer, Size, oldProtection, &_);    // Restore old protection
 
-            if constexpr (ENABLE_PATCH_LOGGING) {
+            if constexpr (BYTEWEAVER_ENABLE_LOGGING) {
                 if (!this->Key.empty()) {
                     Debug("[Patch] (Apply) [Address: " ADDR_FMT ", Size: %zu, Key: %s]", TargetAddress, Size, Key.c_str());
                 } else {
@@ -101,7 +101,7 @@ namespace ByteWeaver
             memcpy(targetPointer, OriginalBytes.data(), Size);            // Restore original bytes
             VirtualProtect(targetPointer, Size, oldProtection, &_);       // Restore old protection
 
-            if constexpr (ENABLE_PATCH_LOGGING) {
+            if constexpr (BYTEWEAVER_ENABLE_LOGGING) {
                 if (!this->Key.empty()) {
                     Debug("[Patch] (Restore) [Address: " ADDR_FMT ", Size: %zu, Key: %s]", TargetAddress, Size, Key.c_str());
                 } else {

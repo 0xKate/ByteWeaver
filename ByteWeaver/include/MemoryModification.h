@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifndef BYTEWEAVER_ENABLE_LOGGING
+    #define BYTEWEAVER_ENABLE_LOGGING 0
+#endif
+
 #include <ByteWeaverPCH.h>
 
 namespace ByteWeaver
