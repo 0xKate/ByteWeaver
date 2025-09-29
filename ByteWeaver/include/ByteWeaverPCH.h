@@ -39,6 +39,8 @@
     #endif
 #endif
 
+
+
 namespace ByteWeaver {
 
     namespace fs = std::filesystem;
@@ -51,17 +53,21 @@ namespace ByteWeaver {
     #error "Unknown architecture"
 #endif
 
-#if !defined(LogLevel)
-    enum class LogLevel : int {
-        LOG_DEBUG,
-        LOG_INFO,
-        LOG_WARN,
-        LOG_ERROR
-    };
-#endif
-
+    #if !defined(LogUtils)
+        enum class LogLevel : int {
+            LOG_DEBUG,
+            LOG_INFO,
+            LOG_WARN,
+            LOG_ERROR
+        };
     // Signature expected for custom loggers
     using LogFunction = void(*)(LogLevel level, const std::string& msg);
+    #else
+    using LogFunction = void(*)(LogUtils::LogLevel level, const std::string& msg);
+    #endif
+
+
+
 
     inline LogFunction LogCallback = nullptr;
     inline std::mutex LogMutex;
