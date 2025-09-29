@@ -2,12 +2,15 @@
 
 namespace LogUtils
 {
-    enum class LogLevel {
+
+#if !defined(LogLevel)
+    enum class LogLevel : int {
         LOG_DEBUG,
         LOG_INFO,
         LOG_WARN,
         LOG_ERROR
     };
+#endif
 
     class Logger {
     public:

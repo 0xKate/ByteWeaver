@@ -15,7 +15,6 @@ namespace ByteWeaver {
         return reinterpret_cast<uintptr_t>(hModule);
     }
 
-    // --- class MemoryModification
     bool MemoryManager::ModExists(const std::string& key, std::shared_ptr<MemoryModification>* hOutMod) {
         std::shared_lock lock(ModsMutex);
         if (const auto it = Mods.find(key); it != Mods.end()) {
@@ -37,6 +36,22 @@ namespace ByteWeaver {
             return true;
         }
         return false;
+    }
+
+    bool MemoryManager::AddMod(const std::string& key, Patch* patch, const uint16_t groupID) {
+        return AddMod(key, std::shared_ptr<MemoryModification>(patch), groupID);
+    }
+
+    bool MemoryManager::AddMod(const std::string& key, Detour* detour, const uint16_t groupID) {
+        return AddMod(key, std::shared_ptr<MemoryModification>(detour), groupID);
+    }
+
+    bool MemoryManager::AddMod(const std::string& key, const std::shared_ptr<Patch>& hPatch, const uint16_t groupID) {
+        return AddMod(key, static_cast<std::shared_ptr<MemoryModification>>(hPatch), groupID);
+    }
+
+    bool MemoryManager::AddMod(const std::string& key, const std::shared_ptr<Detour>& hDetour, const uint16_t groupID) {
+        return AddMod(key, static_cast<std::shared_ptr<MemoryModification>>(hDetour), groupID);
     }
 
     bool MemoryManager::EraseMod(const std::string& key) {
