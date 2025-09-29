@@ -1,8 +1,7 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include "ByteWeaver.h"
-#include "AddressEntry.h"
-#include "AddressScanner.h"
+#include <AddressEntry.h>
+#include <AddressScanner.h>
 
 namespace ByteWeaver {
 

@@ -1,7 +1,6 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include "ByteWeaver.h"
-#include "AddressScanner.h"
+#include <AddressScanner.h>
 
 namespace ByteWeaver {
 #ifndef BYTEWEAVER_ENABLE_PATTERN_SCAN_LOGGING

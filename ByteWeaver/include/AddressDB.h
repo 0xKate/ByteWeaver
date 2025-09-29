@@ -2,7 +2,9 @@
 
 #pragma once
 
-#include "AddressEntry.h"
+#include <ByteWeaverPCH.h>
+#include <AddressEntry.h>
+
 namespace ByteWeaver {
 
     // ReSharper disable once CppInconsistentNaming

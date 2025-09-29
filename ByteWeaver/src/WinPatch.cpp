@@ -1,6 +1,5 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include <ByteWeaver.h>
 #include <WinPatch.h>
 
 namespace ByteWeaver

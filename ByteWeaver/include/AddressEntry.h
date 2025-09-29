@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <ByteWeaverPCH.h>
+
 namespace ByteWeaver {
 
     // Represents a single address entry
