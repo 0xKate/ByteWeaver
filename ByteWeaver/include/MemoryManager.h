@@ -3,8 +3,7 @@
 #pragma once
 
 #include <ByteWeaverPCH.h>
-#include <WinDetour.h>
-#include <WinPatch.h>
+#include <MemoryModification.h>
 
 namespace ByteWeaver {
 	class MemoryManager
@@ -44,33 +43,6 @@ namespace ByteWeaver {
 		static bool RestoreByType(ModType modType);
 		static void EraseByType(ModType modType); // Erase all by type (Does not restore)
 		static void RestoreAndEraseByType(ModType modType);
-
-		// --- START Deprecated
-
-		static bool AddPatch(const std::string& key, const std::shared_ptr<Patch>& hPatch, uint16_t groupID = 0x0000);
-		static bool AddPatch(const std::string& key, Patch* patch, uint16_t groupID = 0x0000);
-		static bool ErasePatch(const std::string& key);
-		static bool RestoreAndErasePatch(const std::string& key);
-
-		static bool ApplyPatches();
-		static bool RestorePatches();
-
-		static bool AddDetour(const std::string& key, const std::shared_ptr<Detour>& hDetour, uint16_t groupID = 0x0000);
-		static bool AddDetour(const std::string& key, Detour* detour, uint16_t groupID = 0x0000);
-		static bool EraseDetour(const std::string& key);
-		static bool RestoreAndEraseDetour(const std::string& key);
-
-		static bool ApplyDetours();
-		static bool RestoreDetours();
-
-		static bool ApplyAll();
-		static bool RestoreAll();
-		static void ClearAll();
-
-		static void ApplyByKey(const std::string& key);
-		static void RestoreByKey(const std::string& key);
-
-		// --- END Deprecated
 
 		static bool IsLocationModified(uintptr_t address, size_t length, std::vector<std::string>* detectedKeys);
 		static bool IsAddressValid(uintptr_t address);

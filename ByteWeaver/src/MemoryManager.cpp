@@ -2,6 +2,9 @@
 
 #include <MemoryManager.h>
 
+#include <WinDetour.h>
+#include <WinPatch.h>
+
 namespace ByteWeaver {
 
     std::map<std::string, std::shared_ptr<MemoryModification>> MemoryManager::Mods;
@@ -269,104 +272,6 @@ namespace ByteWeaver {
             return false;
         });
     }
-
-    // --- START Deprecated but backwards compatible
-
-    [[deprecated("Use AddMod(key, mod) or consider using CreatePatch() instead!")]]
-    bool MemoryManager::AddPatch(const std::string& key, const std::shared_ptr<Patch>& hPatch, const uint16_t groupID) {
-        return AddMod(key, hPatch, groupID);
-    }
-
-    [[deprecated("Use AddMod(key, mod) or consider using CreatePatch() instead!")]]
-    bool MemoryManager::AddPatch(const std::string& key, Patch* patch, const uint16_t groupID) {
-        const auto hPatch = std::shared_ptr<Patch>(patch);
-        return AddMod(key, hPatch, groupID);
-    }
-
-    [[deprecated("Use MemoryManager::EraseMod(key) instead")]]
-    bool MemoryManager::ErasePatch(const std::string& key) {
-        return EraseMod(key);
-    }
-
-    [[deprecated("Use MemoryManager::RestoreAndEraseMod(key) instead")]]
-    bool MemoryManager::RestoreAndErasePatch(const std::string& key) {
-        return RestoreAndEraseMod(key);
-    }
-
-    [[deprecated("Use MemoryManager::ApplyByType(ModType::Patch) instead")]]
-    bool MemoryManager::ApplyPatches() {
-        return ApplyByType(ModType::Patch);
-    }
-
-    [[deprecated("Use MemoryManager::RestoreByType(ModType::Patch) instead")]]
-    bool MemoryManager::RestorePatches() {
-        return RestoreByType(ModType::Patch);
-    }
-
-    [[deprecated("Use AddMod(key, mod) or consider using CreateDetour() instead!")]]
-    bool MemoryManager::AddDetour(const std::string& key, const std::shared_ptr<Detour>& hDetour, const uint16_t groupID) {
-        return AddMod(key, hDetour, groupID);
-    }
-
-    [[deprecated("Use AddMod(key, mod) or consider using CreateDetour() instead!")]]
-    bool MemoryManager::AddDetour(const std::string& key, Detour* detour, const uint16_t groupID) {
-        const auto hDetour = std::shared_ptr<Detour>(detour);
-        return AddMod(key, hDetour, groupID);
-    }
-
-    [[deprecated("Use MemoryManager::EraseMod(key) instead")]]
-    bool MemoryManager::EraseDetour(const std::string& key) {
-        return EraseMod(key);
-    }
-
-    [[deprecated("Use MemoryManager::RestoreAndEraseMod(key) instead")]]
-    bool MemoryManager::RestoreAndEraseDetour(const std::string& key) {
-        return RestoreAndEraseMod(key);
-    }
-
-    [[deprecated("Use MemoryManager::ApplyByType(ModType::Detour) instead")]]
-    bool MemoryManager::ApplyDetours() {
-        return ApplyByType(ModType::Detour);
-    }
-
-    [[deprecated("Use MemoryManager::RestoreByType(ModType::Detour) instead")]]
-    bool MemoryManager::RestoreDetours() {
-        return RestoreByType(ModType::Detour);
-    }
-
-    [[deprecated("Use MemoryManager::ApplyAllMods() instead")]]
-    bool MemoryManager::ApplyAll() {
-        const bool a = ApplyDetours();
-        const bool b = ApplyPatches();
-        Debug("[MemoryManager] Applied all detours and enabled patches!");
-        return a & b;
-    }
-
-    [[deprecated("Use MemoryManager::RestoreAllMods() instead")]]
-    bool MemoryManager::RestoreAll() {
-        const bool a = RestorePatches();
-        const bool b = RestoreDetours();
-        Debug("[MemoryManager] Restored all detours and patches.");
-        return a & b;
-    }
-
-    [[deprecated("Use MemoryManager::EraseAllMods() instead")]]
-    void MemoryManager::ClearAll() {
-        std::unique_lock lock(ModsMutex);
-        Mods.clear();
-    }
-
-    [[deprecated("Use MemoryManager::ApplyMod() instead")]]
-    void MemoryManager::ApplyByKey(const std::string& key) {
-        ApplyMod(key);
-    }
-
-    [[deprecated("Use MemoryManager::RestoreMod() instead")]]
-    void MemoryManager::RestoreByKey(const std::string& key) {
-        RestoreMod(key);
-    }
-
-    // --- END Deprecated but backwards compatible
 
     // --- Memory Modifying Functions
 

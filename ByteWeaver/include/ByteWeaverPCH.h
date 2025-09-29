@@ -51,14 +51,24 @@ namespace ByteWeaver {
     #error "Unknown architecture"
 #endif
 
+    enum class LogLevel : int {
+        LOG_DEBUG,
+        LOG_INFO,
+        LOG_WARN,
+        LOG_ERROR
+    };
+
     // Signature expected for custom loggers
-    using LogFunction = void(*)(int level, const char* msg);
+    using LogFunction = void(*)(LogLevel level, const char* msg);
 
     // Install a custom logger from the outside
-    inline void SetLogCallback(LogFunction fn);
 
     inline LogFunction LogCallback = nullptr;
     inline std::mutex LogMutex;
+
+    inline void SetLogCallback(void* fn) {
+        LogCallback = reinterpret_cast<LogFunction>(fn);
+    }
 
     inline void SetLogCallback(const LogFunction fn) {
         LogCallback = fn;
@@ -70,7 +80,7 @@ namespace ByteWeaver {
 
         std::lock_guard lock(LogMutex);
         if (LogCallback) {
-            LogCallback(level, buffer);
+            LogCallback(static_cast<LogLevel>(level), buffer);
         }
         else {
             const char* levelStr;
