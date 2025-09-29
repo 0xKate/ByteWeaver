@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <ByteWeaverPCH.h>
 #include <MemoryModification.h>
 
 namespace ByteWeaver

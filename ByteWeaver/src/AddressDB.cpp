@@ -1,7 +1,6 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include "ByteWeaver.h"
-#include "AddressDB.h"
+#include <AddressDB.h>
 
 namespace ByteWeaver {
 

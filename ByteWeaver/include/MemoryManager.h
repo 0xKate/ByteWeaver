@@ -1,8 +1,10 @@
 // Copyright(C) 2025 0xKate - MIT License
 
 #pragma once
-#include "WinDetour.h"
-#include "WinPatch.h"
+
+#include <ByteWeaverPCH.h>
+#include <WinDetour.h>
+#include <WinPatch.h>
 
 namespace ByteWeaver {
 	class MemoryManager

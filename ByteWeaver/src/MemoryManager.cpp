@@ -1,12 +1,6 @@
 // Copyright(C) 2025 0xKate - MIT License
 
-#include "ByteWeaver.h"
-#include "MemoryManager.h"
-
-#include <utility>
-
-#include "WinPatch.h"
-#include "WinDetour.h"
+#include <MemoryManager.h>
 
 namespace ByteWeaver {
 
@@ -19,7 +13,6 @@ namespace ByteWeaver {
     }
 
     // --- class MemoryModification
-
     bool MemoryManager::ModExists(const std::string& key, std::shared_ptr<MemoryModification>* hOutMod) {
         std::shared_lock lock(ModsMutex);
         if (const auto it = Mods.find(key); it != Mods.end()) {

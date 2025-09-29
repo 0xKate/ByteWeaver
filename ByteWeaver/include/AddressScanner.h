@@ -2,10 +2,10 @@
 
 #pragma once
 
-// ModuleAddress, TargetAddress, TargetOffset
-typedef std::optional<std::tuple<uintptr_t, uintptr_t, uintptr_t>> SearchResults;
+#include <ByteWeaverPCH.h>
 
 namespace ByteWeaver {
+    typedef std::optional<std::tuple<uintptr_t, uintptr_t, uintptr_t>> SearchResults;
     class AddressScanner {
     public:
         static std::vector<std::optional<uint8_t>> ParsePattern(const std::string& patternStr);

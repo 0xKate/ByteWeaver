@@ -1,6 +1,8 @@
+// Copyright(C) 2025 0xKate - MIT License
+
 #pragma once
 
-#include <ByteWeaver.h>
+#include <ByteWeaverPCH.h>
 
 namespace ByteWeaver
 {

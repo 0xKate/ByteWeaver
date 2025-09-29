@@ -1,8 +1,10 @@
+// Copyright(C) 2025 0xKate - MIT License
+
 #pragma once
 
-#include <ByteWeaver.h>
+#include <ByteWeaverPCH.h>
 #include <WinDetour.h>
-#include "MemoryManager.h"
+#include <MemoryManager.h>
 
 /**
  *  Declare a hook.
