@@ -21,8 +21,6 @@ namespace ByteWeaver {
         if (const auto it = Mods.find(key); it != Mods.end()) {
             if (hOutMod)
                 *hOutMod = it->second;
-            else
-                Error("[MemoryManager] Mod with key '%s' already exists!", key.c_str());
             return true;
         }
         return false;
@@ -96,22 +94,28 @@ namespace ByteWeaver {
         return a & b;
     }
 
-    bool MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, const uint16_t groupID) {
-        if (!ModExists(key)) {
-            const auto patch = std::make_shared<Patch>(patchAddress, patchBytes);
+    std::shared_ptr<Patch> MemoryManager::CreatePatch(const std::string& key, uintptr_t patchAddress, const std::vector<uint8_t>& patchBytes, const uint16_t groupID) {
+        std::shared_ptr<MemoryModification> existingMod;
+        if (!ModExists(key, &existingMod)) {
+            auto patch = std::make_shared<Patch>(patchAddress, patchBytes);
             AddMod(key, patch, groupID);
-            return true;
+            return patch;
         }
-        return false;
+
+        Warn("Attempted to create a Patch with already existing key and returned existing Patch instead.");
+        return std::dynamic_pointer_cast<Patch>(existingMod); // Will return nullptr if the existing mod by 'Key' was not actually a patch.
     }
 
-    bool MemoryManager::CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, const uint16_t groupID) {
-        if (!ModExists(key)) {
-            const auto detour = std::make_shared<Detour>(targetAddress, originalFunction, detourFunction);
+    std::shared_ptr<Detour> MemoryManager::CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, const uint16_t groupID) {
+        std::shared_ptr<MemoryModification> existingMod = nullptr;
+        if (!ModExists(key, &existingMod)) {
+            auto detour = std::make_shared<Detour>(targetAddress, originalFunction, detourFunction);
             AddMod(key, detour, groupID);
-            return true;
+            return detour;
         }
-        return false;
+
+        Warn("Attempted to create a Detour with already existing key and returned existing Detour instead.");
+        return std::dynamic_pointer_cast<Detour>(existingMod); // Will return nullptr if the existing mod by 'Key' was not actually a detour.
     }
 
     auto MemoryManager::GetAllMods() -> std::vector<std::shared_ptr<MemoryModification>>

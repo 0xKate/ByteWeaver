@@ -23,7 +23,7 @@ include(FetchContent)
 FetchContent_Declare(
         ByteWeaver
         GIT_REPOSITORY https://github.com/0xKate/ByteWeaver.git
-        GIT_TAG        1.0.48
+        GIT_TAG        1.0.49
 )
 FetchContent_MakeAvailable(ByteWeaver)
 

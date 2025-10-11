@@ -130,7 +130,7 @@ namespace ByteWeaver {
 		 * @param groupID Optional group identifier (default: 0x0000)
 		 * @return true on success, false on failure
 		 */
-		static bool CreatePatch(const std::string& key, uintptr_t patchAddress, std::vector<uint8_t> patchBytes, uint16_t groupID = 0x0000);
+		static std::shared_ptr<Patch> CreatePatch(const std::string& key, uintptr_t patchAddress, const std::vector<uint8_t>& patchBytes, uint16_t groupID = 0x0000);
 
 		/**
 		 * @brief Creates and registers a function detour modification
@@ -141,7 +141,7 @@ namespace ByteWeaver {
 		 * @param groupID Optional group identifier (default: 0x0000)
 		 * @return true on success, false on failure
 		 */
-		static bool CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, uint16_t groupID = 0x0000);
+		static std::shared_ptr<Detour> CreateDetour(const std::string& key, uintptr_t targetAddress, PVOID* originalFunction, PVOID detourFunction, uint16_t groupID = 0x0000);
 
 		/**
 		 * @brief Retrieves all registered memory modifications
