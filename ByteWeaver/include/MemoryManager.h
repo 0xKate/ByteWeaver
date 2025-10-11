@@ -238,6 +238,7 @@ namespace ByteWeaver {
 		static void RestoreAndEraseByType(ModType modType);
 
 		static bool DoRangesIntersect(uintptr_t addr1, size_t size1, uintptr_t addr2, size_t size2);
+		static bool IsLocationModifiedFast(uintptr_t address, size_t length, std::vector<const char*>& detectedKeys);
 
 		/**
 		 * @brief Checks if a memory region has been modified by any registered modifications

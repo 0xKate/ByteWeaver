@@ -176,7 +176,6 @@ namespace ByteWeaver {
         return groupIdMods;
     }
 
-    // Only applies enabled mods
     bool MemoryManager::ApplyByGroupID(const uint16_t groupID)
     {
         std::shared_lock lock(ModsMutex);
@@ -306,6 +305,28 @@ namespace ByteWeaver {
 
         // Standard intersection check for [addr1, end1) and [addr2, end2)
         return addr1 < end2 && addr2 < end1;
+    }
+
+    // ReSharper disable once CppTooWideScopeInitStatement // disabled for compiler optimization
+    bool MemoryManager::IsLocationModifiedFast(const uintptr_t address, const size_t length, std::vector<const char*>& detectedKeys) {
+        detectedKeys.reserve(Mods.size()); // prevents reallocations
+
+        const uintptr_t endAddress = address + length;
+
+        // loop without any auto-unpacking, just pointers to avoid structured bindings
+        for (auto it = Mods.begin(); it != Mods.end(); ++it) {
+            const MemoryModification* mm = it->second.get(); // direct pointer access
+            const uintptr_t modStart = mm->TargetAddress;
+
+            const uintptr_t modEnd   = modStart + mm->Size;
+
+            // branchless style (compiler may auto-vectorize)
+            if (mm->IsModified & (address < modEnd) & (endAddress > modStart)) {
+                detectedKeys.push_back(it->first.c_str()); // use string pointer to avoid copies
+            }
+        }
+
+        return !detectedKeys.empty();
     }
 
     bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
