@@ -1,5 +1,6 @@
 // Copyright(C) 2025 0xKate - MIT License
 
+#include <cassert>
 #include <MemoryManager.h>
 
 #include <WinDetour.h>
@@ -290,8 +291,30 @@ namespace ByteWeaver {
 
     // --- Memory Modifying Functions
 
+    bool MemoryManager::DoRangesIntersect(const uintptr_t addr1, const size_t size1,
+                      const uintptr_t addr2, const size_t size2) {
+        // Handle overflow: check if end address would wrap around
+        const uintptr_t end1 = addr1 + size1;
+        const uintptr_t end2 = addr2 + size2;
+
+        // Check for overflow in either range
+        if (end1 < addr1 || end2 < addr2) {
+            // If either range wraps around, they intersect unless one is entirely
+            // before the other's start
+            return true; // Conservative approach for overflow cases
+        }
+
+        // Standard intersection check for [addr1, end1) and [addr2, end2)
+        return addr1 < end2 && addr2 < end1;
+    }
+
     bool MemoryManager::IsLocationModified(const uintptr_t address, const size_t length, std::vector<std::string>* detectedKeys) {
         const uintptr_t endAddress = address + length;
+
+        if (endAddress < address) {
+            Warn("[MemoryManager] (IsLocationModified) Integer overflow detected in input range!");
+            assert(endAddress >= address && "address range overflow");
+        }
 
         for (const auto& [key, mod] : Mods) {
             if (mod->IsModified) {
@@ -301,10 +324,7 @@ namespace ByteWeaver {
             }
         }
 
-        if (!detectedKeys->empty())
-            return true;
-
-        return false;
+        return !detectedKeys->empty();
     }
 
     bool MemoryManager::IsAddressValid(const uintptr_t address) {

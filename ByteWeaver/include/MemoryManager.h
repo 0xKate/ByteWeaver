@@ -237,6 +237,8 @@ namespace ByteWeaver {
 		 */
 		static void RestoreAndEraseByType(ModType modType);
 
+		static bool DoRangesIntersect(uintptr_t addr1, size_t size1, uintptr_t addr2, size_t size2);
+
 		/**
 		 * @brief Checks if a memory region has been modified by any registered modifications
 		 * @param address Starting address of the region to check
