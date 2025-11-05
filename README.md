@@ -8,9 +8,7 @@
 - ✅ Minimal dependencies (uses Windows APIs + Detours)  
 - ✅ Safe memory patching and restoration  
 - ✅ Function detouring via Microsoft Detours  
-- ✅ Robust logging and error handling  
-- ✅ Debug/Release mode support with optional logging  
-- ✅ Clean C++ interface for integration into DLLs or native applications  
+- ✅ Compiled as a .lib for integration into DLLs or native applications  
 
 <br/>
 
@@ -71,7 +69,7 @@ static void ApplyHook()
 
 // Example hook of a __thiscall method.
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
-static int __fastcall SomeThisCallFunc1Hook(int a, int b, int c) {  // #NameHook auto-generated 
+static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) {  // #NameHook auto-generated -- (p_this and edx are part of managing a __thiscall, do not remove, and do not pass to originial call)
     // Pre-Hook
     int result = SomeThisCallFunc1Original(a,b,c);  // #NameOriginal auto-generated
     // Post-Hook
@@ -86,7 +84,7 @@ static void ApplyHook()
 
 // Example using symbols (funcname, modulename)
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
-static int __fastcall SomeThisCallFunc1Hook(int a, int b, int c) { // #NameHook auto-generated 
+static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) { // #NameHook auto-generated -- (p_this and edx are part of managing a __thiscall, do not remove, and do not pass to originial call)
     // Pre-Hook
     int result = SomeThisCallFunc1Original(a,b,c); // #NameOriginal auto-generated
     // Post-Hook
