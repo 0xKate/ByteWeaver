@@ -69,9 +69,9 @@ static void ApplyHook()
 
 // Example hook of a __thiscall method.
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
-static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) {  // #NameHook auto-generated -- (p_this and edx are part of managing a __thiscall, do not remove, and do not pass to originial call)
+static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) { // with __thiscall edx param is needed for alignment.
     // Pre-Hook
-    int result = SomeThisCallFunc1Original(a,b,c);  // #NameOriginal auto-generated
+    int result = SomeThisCallFunc1Original(p_this,a,b,c); // do not pass edx
     // Post-Hook
     return result;
 }
@@ -84,9 +84,9 @@ static void ApplyHook()
 
 // Example using symbols (funcname, modulename)
 DECLARE_HOOK_THISCALL(SomeThisCallFunc1, int, __fastcall, int a, int b, int c);
-static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) { // #NameHook auto-generated -- (p_this and edx are part of managing a __thiscall, do not remove, and do not pass to originial call)
+static int __fastcall SomeThisCallFunc1Hook(const void* p_this, int edx, int a, int b, int c) {
     // Pre-Hook
-    int result = SomeThisCallFunc1Original(a,b,c); // #NameOriginal auto-generated
+    int result = SomeThisCallFunc1Original(p_this,a,b,c);  // do not pass edx
     // Post-Hook
     return result;
 }
