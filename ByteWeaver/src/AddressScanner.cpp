@@ -30,25 +30,33 @@ namespace ByteWeaver {
         const size_t skipCount)
     {
         const size_t patternSize = pattern.size();
-        size_t foundCount = 0;
 
-        for (size_t i = 0; i <= size - patternSize; ++i) {
-            bool match = true;
-            for (size_t j = 0; j < patternSize; ++j) {
-                if (pattern[j].has_value() && base[i + j] != pattern[j].value()) {
-                    match = false;
-                    break;
+        __try {
+            size_t foundCount = 0;
+            for (size_t i = 0; i <= size - patternSize; ++i) {
+                bool match = true;
+                for (size_t j = 0; j < patternSize; ++j) {
+                    if (pattern[j].has_value() && base[i + j] != pattern[j].value()) {
+                        match = false;
+                        break;
+                    }
                 }
-            }
 
-            if (match) {
-                if (foundCount < skipCount) {
-                    ++foundCount;
-                    continue;
+                if (match) {
+                    if (skipCount != -1)
+                        if (foundCount < skipCount) {
+                            ++foundCount;
+                            continue;
+                        }
+                    return reinterpret_cast<uintptr_t>(&base[i]);
                 }
-                return reinterpret_cast<uintptr_t>(&base[i]);
             }
         }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            Error("[AddressScanner] Caught an exception: code=0x%X", GetExceptionCode());
+        }
+
         return std::nullopt;
     }
 
