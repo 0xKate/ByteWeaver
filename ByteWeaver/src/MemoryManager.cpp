@@ -102,7 +102,7 @@ namespace ByteWeaver {
             return patch;
         }
 
-        Warn("Attempted to create a Patch with already existing key and returned existing Patch instead.");
+        Warn("Attempted to create a Patch with already existing key (%s) and returned existing Patch instead.", key.empty() ? "" : key.c_str());
         return std::dynamic_pointer_cast<Patch>(existingMod); // Will return nullptr if the existing mod by 'Key' was not actually a patch.
     }
 
@@ -114,7 +114,7 @@ namespace ByteWeaver {
             return detour;
         }
 
-        Warn("Attempted to create a Detour with already existing key and returned existing Detour instead.");
+        Warn("Attempted to create a Detour with already existing key (%s) and returned existing Detour instead.", key.empty() ? "" : key.c_str());
         return std::dynamic_pointer_cast<Detour>(existingMod); // Will return nullptr if the existing mod by 'Key' was not actually a detour.
     }
 
