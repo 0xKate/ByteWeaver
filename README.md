@@ -21,7 +21,7 @@ include(FetchContent)
 FetchContent_Declare(
         ByteWeaver
         GIT_REPOSITORY https://github.com/0xKate/ByteWeaver.git
-        GIT_TAG        1.0.51
+        GIT_TAG        1.0.52
 )
 FetchContent_MakeAvailable(ByteWeaver)
 
@@ -52,7 +52,7 @@ target_link_libraries(YOUR_PROJECT PRIVATE
 #include <DetourMacros.hpp>
 
 // Example hook of a __cdecl function.
-DECLARE_HOOK(SomeFunc1, int, __cdecl, __cdecl, int a, int b, int c);
+DECLARE_HOOK_SIMPLE(SomeFunc1, int, __cdecl, int a, int b, int c);
 // The function is already declared by DECLARE_HOOK as #Name+Hook, write your implementation.
 static int __cdecl SomeFunc1Hook(int a, int b, int c) { // #NameHook auto-generated 
     // Pre-Hook

@@ -19,6 +19,17 @@ static inline uintptr_t Name##Address{};                            \
 static inline Name##_t  Name##Original{};                           \
 static Ret HookCallType Name##Hook(__VA_ARGS__);
 
+/**
+ *  Declare a hook with matching call types.
+ * @param Name The Prefix for the macro, and string name of hook/patch.
+ * @param Ret The return type. (ex. int)
+ * @param CallType The calling convention of the original function AND the hook function. (ex. __cdecl)
+ */
+#define DECLARE_HOOK_SIMPLE(Name, Ret, CallType, ...)               \
+using Name##_t = Ret(CallType*)(__VA_ARGS__);                       \
+static inline uintptr_t Name##Address{};                            \
+static inline Name##_t  Name##Original{};                           \
+static Ret CallType Name##Hook(__VA_ARGS__);
 
 /**
  * For hooking methods using __thiscall. Adds THIS, and EDX params for you.
