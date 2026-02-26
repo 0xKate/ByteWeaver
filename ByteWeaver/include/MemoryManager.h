@@ -19,9 +19,6 @@ namespace ByteWeaver {
 	class MemoryManager
 	{
 	public:
-		/// @brief Base address of the target process/module
-		static uintptr_t BaseAddress;
-
 		/// @brief Container for all registered memory modifications
 		static std::map<std::string, std::shared_ptr<MemoryModification>> Mods;
 
@@ -299,6 +296,8 @@ namespace ByteWeaver {
 		 * @return Base address of the module, or 0 if not found
 		 */
 		static uintptr_t GetModuleBaseAddress(const wchar_t* moduleName);
+
+		static uintptr_t GetFunctionAddress(const wchar_t* moduleName, const char* functionName);
 
 		/**
 		 * @brief Quickly determines the module base address for a given pointer

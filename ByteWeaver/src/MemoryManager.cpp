@@ -433,11 +433,18 @@ namespace ByteWeaver {
     {
         if (HMODULE hMod = GetModuleHandleW(moduleName); !hMod) {
             Error("%s not loaded yet.", moduleName);
-            return 0;
+            return NULL;
         }
         else {
             return reinterpret_cast<uintptr_t>(hMod);
         }
+    }
+
+    uintptr_t MemoryManager::GetFunctionAddress(const wchar_t* moduleName, const char* functionName)
+    {
+        if (const HMODULE hMod = GetModuleHandleW(moduleName); hMod)
+            return reinterpret_cast<uintptr_t>(GetProcAddress(hMod, functionName));
+        return NULL;
     }
 
     uintptr_t MemoryManager::GetModuleBaseAddressFast(const void* p)

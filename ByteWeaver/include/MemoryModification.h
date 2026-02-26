@@ -19,6 +19,7 @@ namespace ByteWeaver
     enum class ModType : uint8_t {
         Detour,      ///< Function detouring/hooking modification
         Patch,       ///< Binary patching modification
+        Module,
         Unspecified = 0xFF  ///< Default/unknown modification type
     };
 
