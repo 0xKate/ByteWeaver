@@ -1,5 +1,6 @@
 # ---- ByteWeaver library ----
-add_library(ByteWeaver STATIC)
+add_library(ByteWeaver STATIC
+        src/HardwareBP.cpp)
 
 target_precompile_headers(ByteWeaver PRIVATE
         include/ByteWeaverPCH.h
@@ -17,6 +18,7 @@ target_sources(ByteWeaver PUBLIC
         src/MemoryManager.cpp
         src/WinDetour.cpp
         src/WinPatch.cpp
+        src/HardwareBP.cpp
 )
 
 # Export an alias (nice for consumers)
