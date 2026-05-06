@@ -22,6 +22,10 @@
 #include <utility> 
 #include <array>
 
+#if defined(HAVE_BYTEWEAVER)
+    #include <ByteWeaver.h>   // ← add this block
+#endif
+
 namespace LogUtils
 {
     namespace fs = std::filesystem;

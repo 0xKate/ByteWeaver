@@ -39,38 +39,22 @@
     #endif
 #endif
 
-
-
 namespace ByteWeaver {
 
     namespace fs = std::filesystem;
 
-#if defined(_WIN64)
-    constexpr bool WIN64 = true;
-#elif defined(_M_IX86)
-    constexpr bool WIN64 = false;
-#else
-    #error "Unknown architecture"
-#endif
+    #if defined(_WIN64)
+        constexpr bool WIN64 = true;
+    #elif defined(_M_IX86)
+        constexpr bool WIN64 = false;
+    #else
+        #error "Unknown architecture"
+    #endif
 
-#if defined(HAVE_BYTEWEAVER)
-    using LogLevel   = ByteWeaver::LogLevel;
-    using LogFunction = void(*)(LogLevel, const std::string&);
-
-#elif defined(HAVE_LOGUTILS)
-    using LogLevel   = LogUtils::LogLevel;
-    using LogFunction = void(*)(LogLevel, const std::string&);
-
-#else
     enum class LogLevel : int {
-        LOG_DEBUG,
-        LOG_INFO,
-        LOG_WARN,
-        LOG_ERROR
+        LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR
     };
     using LogFunction = void(*)(LogLevel, const std::string&);
-#define HAVE_BYTEWEAVER
-#endif
 
     inline LogFunction LogCallback = nullptr;
     inline std::mutex LogMutex;
